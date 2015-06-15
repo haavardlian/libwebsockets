@@ -39,7 +39,8 @@ namespace libwebsockets
 			if(!init)
 			{
 				init = true;
-				instance.AddToPoll(Socket(SocketType::STREAM, ip, port, &HandleConnectionEvent));
+				ServerSocket = Socket(SocketType::STREAM, ip, port, &HandleConnectionEvent);
+				instance.AddToPoll(ServerSocket);
 			}
 			return instance;
 		};
@@ -56,6 +57,7 @@ namespace libwebsockets
 		vector<Socket>	Sockets;
 		static WebSocketServer instance;
 		static bool init;
+		static Socket ServerSocket;
 		static int HandleConnectionEvent(Socket & socket);
 		static int HandleClientEvent(Socket & socket);
 		static map<string, string>		ParseHTTPHeader(string header);
