@@ -158,13 +158,13 @@ int WebSocketServer::HandleClientEvent(Socket &socket)
 				{
 					buffer[0] = 0x7E;
 					offset += 2;
-					*((uint16*) buffer[2]) = (uint16) size;
+					*((uint16*) &buffer[2]) = (uint16) size;
 				}
 				else
 				{
 					buffer[0] = 0x7F;
 					offset += 8;
-					*((uint64*) buffer[2]) = (uint64) size;
+					*((uint64*) &buffer[2]) = (uint64) size;
 				}
 
 				memcpy(buffer + offset, socket.GetMessage(), socket.GetMessageSize());
