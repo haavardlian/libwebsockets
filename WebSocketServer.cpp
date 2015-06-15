@@ -12,7 +12,7 @@ using namespace libwebsockets;
 
 WebSocketServer WebSocketServer::instance;
 bool WebSocketServer::init = false;
-Socket WebSocketServer::ServerSocket;
+Socket *WebSocketServer::ServerSocket;
 
 int WebSocketServer::WaitForSockets(int Milliseconds)
 {

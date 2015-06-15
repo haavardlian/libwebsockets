@@ -24,6 +24,10 @@ namespace libwebsockets
 	class WebSocketServer
 	{
 	public:
+		virtual ~WebSocketServer()
+		{
+			delete ServerSocket;
+		};
 		int AddToPoll(Socket Socket) { Sockets.push_back(Socket); };
 		int RemoveFromPoll(Socket & Socket);
 		vector<Socket>& GetSockets() { return Sockets; };
@@ -39,8 +43,8 @@ namespace libwebsockets
 			if(!init)
 			{
 				init = true;
-				ServerSocket = Socket(SocketType::STREAM, ip, port, &HandleConnectionEvent);
-				instance.AddToPoll(ServerSocket);
+				ServerSocket = new Socket(SocketType::STREAM, ip, port, &HandleConnectionEvent);
+				instance.AddToPoll(*ServerSocket);
 			}
 			return instance;
 		};
@@ -57,7 +61,7 @@ namespace libwebsockets
 		vector<Socket>	Sockets;
 		static WebSocketServer instance;
 		static bool init;
-		static Socket ServerSocket;
+		static Socket* ServerSocket;
 		static int HandleConnectionEvent(Socket & socket);
 		static int HandleClientEvent(Socket & socket);
 		static map<string, string>		ParseHTTPHeader(string header);
