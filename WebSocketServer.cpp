@@ -147,10 +147,29 @@ int WebSocketServer::HandleClientEvent(Socket &socket)
 			}
 			else if(header.Opcode == WebSocketOpcode::PING)
 			{
-				uint8 buffer[2];
+				uint8 buffer[0xFFFF];
 				buffer[0] = 0x89;
-				buffer[0] = 0x0;
-				int sent = send(socket.GetFileDescriptor(), buffer, sizeof(buffer), 0x0);
+
+				size_t size = socket.GetMessageSize();
+				int offset = 2;
+				if(size < 0x7E)
+					buffer[0] = size;
+				else if(size < 0x7F)
+				{
+					buffer[0] = 0x7E;
+					offset += 2;
+					*((uint16*) buffer[2]) = (uint16) size;
+				}
+				else
+				{
+					buffer[0] = 0x7F;
+					offset += 8;
+					*((uint64*) buffer[2]) = (uint64) size;
+				}
+
+				memcpy(buffer + offset, socket.GetMessage(), socket.GetMessageSize());
+
+				int sent = send(socket.GetFileDescriptor(), buffer, offset + socket.GetMessageSize(), 0x0);
 
 				if(sent != sizeof(buffer))
 				{
@@ -170,8 +189,8 @@ int WebSocketServer::HandleClientEvent(Socket &socket)
 				//Call some function
 				if(ws.OnMessage != nullptr) ws.OnMessage(socket);
 
-				socket.ResetMessage();
 			}
+			socket.ResetMessage();
 		}
 
 		return 0;
