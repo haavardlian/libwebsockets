@@ -39,7 +39,7 @@ int WebSocketServer::HandleConnectionEvent(Socket & socket)
 {
 	auto& ws = WebSocketServer::Instance();
 	struct sockaddr_in client_addr;
-	int client_length = sizeof(client_addr);
+	socklen_t client_length = sizeof(client_addr);
 	int client = accept(socket.GetFileDescriptor(), (struct sockaddr *)&client_addr, &client_length);
 	size_t BufferSize = 1500;
 	uint8 Buffer[BufferSize]; //Buffer for current packet
