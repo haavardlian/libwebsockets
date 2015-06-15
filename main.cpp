@@ -1,15 +1,14 @@
 #include <iostream>
-#include "PollableSocket.h"
 #include "WebSocketServer.h"
 using namespace std;
 using namespace libwebsockets;
 
-void CloseHandler(PollableSocket& socket)
+void CloseHandler(Socket & socket)
 {
 	cout << "Closed socket " << socket.GetFileDescriptor() << endl;
 }
 
-void OpenHandler(PollableSocket& socket)
+void OpenHandler(Socket & socket)
 {
 
 	uint8 buffer[2];
@@ -19,12 +18,12 @@ void OpenHandler(PollableSocket& socket)
 	send(socket.GetFileDescriptor(), buffer, 2, 0);
 }
 
-void PongHandler(PollableSocket& socket)
+void PongHandler(Socket & socket)
 {
 	cout << "Got pong from " << socket.GetFileDescriptor() << endl;
 }
 
-void OnMessage(PollableSocket& socket)
+void OnMessage(Socket & socket)
 {
 	cout << "Got message:" << endl << socket.GetMessage() << endl;
 }

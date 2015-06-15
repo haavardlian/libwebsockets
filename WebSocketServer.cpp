@@ -7,6 +7,7 @@
 #include "WebSocketServer.h"
 #include "Base64.h"
 #include "sha1.h"
+
 using namespace libwebsockets;
 
 WebSocketServer WebSocketServer::instance;
@@ -34,7 +35,7 @@ int WebSocketServer::WaitForSockets(int Milliseconds)
 	return ret;
 }
 
-int WebSocketServer::HandleConnectionEvent(PollableSocket& socket)
+int WebSocketServer::HandleConnectionEvent(Socket & socket)
 {
 	auto& ws = WebSocketServer::Instance();
 	struct sockaddr_in client_addr;
@@ -43,7 +44,7 @@ int WebSocketServer::HandleConnectionEvent(PollableSocket& socket)
 	size_t BufferSize = 1500;
 	uint8 Buffer[BufferSize]; //Buffer for current packet
 	size_t ReadBytes;
-	PollableSocket ClientSocket = PollableSocket(SocketType::STREAM, client, &HandleClientEvent);
+	Socket ClientSocket = Socket(SocketType::STREAM, client, &HandleClientEvent);
 
 	try
 	{
@@ -76,7 +77,7 @@ int WebSocketServer::HandleConnectionEvent(PollableSocket& socket)
 
 }
 
-int WebSocketServer::HandleClientEvent(PollableSocket &socket)
+int WebSocketServer::HandleClientEvent(Socket &socket)
 {
 	auto& ws = WebSocketServer::Instance();
 	size_t BufferSize = 1500;
@@ -160,12 +161,12 @@ int WebSocketServer::HandleClientEvent(PollableSocket &socket)
 			}
 			else if(header.Opcode == WebSocketOpcode::PONG)
 			{
-				if(header.Opcode == WebSocketOpcode::TEXT && socket.GetMessageSize() < MAX_MESSAGE_SIZE)
-					socket.GetMessage()[socket.GetMessageSize()] = 0;
 				if(ws.OnPong != nullptr) ws.OnPong(socket);
 			}
 			else
 			{
+				if(header.Opcode == WebSocketOpcode::TEXT && socket.GetMessageSize() < MAX_MESSAGE_SIZE)
+					socket.GetMessage()[socket.GetMessageSize()] = 0;
 				//Call some function
 				if(ws.OnMessage != nullptr) ws.OnMessage(socket);
 
@@ -215,13 +216,13 @@ map<string, string> WebSocketServer::ParseHTTPHeader(string header)
 	return m;
 }
 
-int WebSocketServer::RemoveFromPoll(PollableSocket &Socket)
+int WebSocketServer::RemoveFromPoll(Socket &Socket)
 {
 	for(int i = 0; i < Sockets.size(); i++)
 	{
-		if(Sockets[i].GetFileDescriptor() == Socket.GetFileDescriptor())
+		if(&Sockets[i] == &Socket)
 		{
-			close(Sockets[i].GetFileDescriptor());
+			Sockets[i].Close();
 			Sockets.erase(Sockets.begin() + i);
 
 			return 0;

@@ -5,7 +5,7 @@
 #ifndef LIBWEBSOCKETS_WEBSOCKETSERVER_H
 #define LIBWEBSOCKETS_WEBSOCKETSERVER_H
 
-#include "PollableSocket.h"
+#include "Socket.h"
 #include <poll.h>
 #include <vector>
 #include <map>
@@ -15,7 +15,7 @@ namespace libwebsockets
 	using namespace std;
 
 
-	typedef void (*MessageHandler)(PollableSocket& socket);
+	typedef void (*MessageHandler)(Socket & socket);
 
 	#define GID "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 	#define htonll(x) ((1==htonl(1)) ? (x) : ((uint64_t)htonl((x) & 0xFFFFFFFF) << 32) | htonl((x) >> 32))
@@ -24,9 +24,9 @@ namespace libwebsockets
 	class WebSocketServer
 	{
 	public:
-		int AddToPoll(PollableSocket Socket) { Sockets.push_back(Socket); };
-		int RemoveFromPoll(PollableSocket& Socket);
-		vector<PollableSocket>& GetSockets() { return Sockets; };
+		int AddToPoll(Socket Socket) { Sockets.push_back(Socket); };
+		int RemoveFromPoll(Socket & Socket);
+		vector<Socket>& GetSockets() { return Sockets; };
 		int WaitForSockets(int Milliseconds);
 		MessageHandler OnMessage = nullptr;
 		MessageHandler OnPing = nullptr;
@@ -39,7 +39,7 @@ namespace libwebsockets
 			if(!init)
 			{
 				init = true;
-				instance.AddToPoll(PollableSocket(SocketType::STREAM, ip, port, &HandleConnectionEvent));
+				instance.AddToPoll(Socket(SocketType::STREAM, ip, port, &HandleConnectionEvent));
 			}
 			return instance;
 		};
@@ -53,11 +53,11 @@ namespace libwebsockets
 		WebSocketServer() {};
 		WebSocketServer(WebSocketServer const&) {};
 		WebSocketServer& operator=(WebSocketServer const&){};
-		vector<PollableSocket>	Sockets;
+		vector<Socket>	Sockets;
 		static WebSocketServer instance;
 		static bool init;
-		static int HandleConnectionEvent(PollableSocket& socket);
-		static int HandleClientEvent(PollableSocket& socket);
+		static int HandleConnectionEvent(Socket & socket);
+		static int HandleClientEvent(Socket & socket);
 		static map<string, string>		ParseHTTPHeader(string header);
 	};
 }
