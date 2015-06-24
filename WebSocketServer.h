@@ -5,7 +5,7 @@
 #ifndef LIBWEBSOCKETS_WEBSOCKETSERVER_H
 #define LIBWEBSOCKETS_WEBSOCKETSERVER_H
 
-#include "Socket.h"
+#include "Client.h"
 #include <poll.h>
 #include <vector>
 #include <map>
@@ -15,7 +15,7 @@ namespace libwebsockets
 	using namespace std;
 
 
-	typedef void (*MessageHandler)(Socket & socket);
+	typedef void (*MessageHandler)(Client & socket);
 
 	#define GID "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 	#define TEMP_BUFFER_SIZE 2048;
@@ -26,9 +26,9 @@ namespace libwebsockets
 	{
 	public:
 		virtual ~WebSocketServer(){};
-		int AddToPoll(Socket Socket) { Sockets.push_back(Socket); };
-		int RemoveFromPoll(Socket & Socket);
-		vector<Socket>& GetSockets() { return Sockets; };
+		int AddToPoll(Client Socket) { Sockets.push_back(Socket); };
+		int RemoveFromPoll(Client & Socket);
+		vector<Client>& GetSockets() { return Sockets; };
 		int WaitForSockets(int Milliseconds);
 		MessageHandler OnMessage = nullptr;
 		MessageHandler OnPing = nullptr;
@@ -41,7 +41,7 @@ namespace libwebsockets
 			if(!init)
 			{
 				init = true;
-				instance.AddToPoll(Socket(SocketType::STREAM, ip, port, &HandleConnectionEvent));
+				instance.AddToPoll(Client(SocketType::STREAM, ip, port, &HandleConnectionEvent));
 			}
 			return instance;
 		};
@@ -55,11 +55,11 @@ namespace libwebsockets
 		WebSocketServer() {};
 		WebSocketServer(WebSocketServer const&) {};
 		WebSocketServer& operator=(WebSocketServer const&){};
-		vector<Socket>	Sockets;
+		vector<Client>	Sockets;
 		static WebSocketServer instance;
 		static bool init;
-		static int HandleConnectionEvent(Socket & socket);
-		static int HandleClientEvent(Socket & socket);
+		static int HandleConnectionEvent(Client & socket);
+		static int HandleClientEvent(Client & socket);
 		static map<string, string>		ParseHTTPHeader(string header);
 	};
 }

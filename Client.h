@@ -13,6 +13,7 @@
 #include <string>
 #include <functional>
 #include <iostream>
+#include <stdexcept>
 
 namespace libwebsockets {
 
@@ -59,12 +60,12 @@ namespace libwebsockets {
         RANDOM
     };
 
-    class Socket
+    class Client
 	{
     public:
-                    	Socket(SocketType Type, string ip, uint16 port, int	(*Handler)(Socket &));
-						Socket(SocketType Type, int fd, int	(*Handler)(Socket &));
-        virtual     	~Socket() {}
+                    	Client(SocketType Type, string ip, uint16 port, int	(*Handler)(Client &));
+						Client(SocketType Type, int fd, int	(*Handler)(Client &));
+        virtual     	~Client() {}
         SocketType  	GetType() { return Type; };
         int         	GetFileDescriptor() { return FileDescriptor; };
         size_t      	Read(uint8 *buffer, size_t size);
@@ -76,8 +77,10 @@ namespace libwebsockets {
         size_t      	GetMessageSize() { return CurrentBufferPos; };
 		WebSocketState	GetState() { return State; };
 		void			SetState(WebSocketState state) { State = state; };
+        void            SendPing();
+        void            SendMessage(uint8 *Buffer, size_t Size, WebSocketOpcode MessageType);
 
-        bool operator==(const Socket& s) const
+        bool operator==(const Client & s) const
         {
             return (&s == this);
         }
@@ -85,7 +88,7 @@ namespace libwebsockets {
     private:
         SocketType  Type;
         int         FileDescriptor;
-		int			(*Handler)(Socket &);
+		int			(*Handler)(Client &);
 		uint8 		Message[MAX_MESSAGE_SIZE];
 		int			CurrentBufferPos = 0;
 		WebSocketState State;

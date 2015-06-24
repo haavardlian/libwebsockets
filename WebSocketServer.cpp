@@ -18,7 +18,7 @@ int WebSocketServer::WaitForSockets(int Milliseconds)
 {
 	struct pollfd pfds[Sockets.size()];
 	int i = 0;
-	for(Socket& socket : Sockets)
+	for(Client & socket : Sockets)
 	{
 		pfds[i].fd = socket.GetFileDescriptor();
 		pfds[i].events = POLLIN;
@@ -36,7 +36,7 @@ int WebSocketServer::WaitForSockets(int Milliseconds)
 	return ret;
 }
 
-int WebSocketServer::HandleConnectionEvent(Socket & socket)
+int WebSocketServer::HandleConnectionEvent(Client & socket)
 {
 	auto& ws = WebSocketServer::Instance();
 	struct sockaddr_in client_addr;
@@ -45,10 +45,9 @@ int WebSocketServer::HandleConnectionEvent(Socket & socket)
 	size_t BufferSize = 1500;
 	uint8 Buffer[BufferSize]; //Buffer for current packet
 	size_t ReadBytes;
-	Socket ClientSocket = Socket(SocketType::STREAM, client, &HandleClientEvent);
-
 	try
 	{
+		Client ClientSocket = Client(SocketType::STREAM, client, &HandleClientEvent);
 		ReadBytes = ClientSocket.Read(Buffer, BufferSize);
 		Buffer[ReadBytes] = '\0';
 
@@ -73,12 +72,12 @@ int WebSocketServer::HandleConnectionEvent(Socket & socket)
 	}
 	catch(const exception& ex)
 	{
-		cout << "Could not read from socket" << endl;
+		cout << ex.what() << endl;
 	}
 
 }
 
-int WebSocketServer::HandleClientEvent(Socket &socket)
+int WebSocketServer::HandleClientEvent(Client &socket)
 {
 	auto& ws = WebSocketServer::Instance();
 	size_t BufferSize = TEMP_BUFFER_SIZE;
@@ -189,9 +188,10 @@ int WebSocketServer::HandleClientEvent(Socket &socket)
 			}
 			else
 			{
+				//Terminate string if text message
 				if(header.Opcode == WebSocketOpcode::TEXT && socket.GetMessageSize() < MAX_MESSAGE_SIZE)
 					socket.GetMessage()[socket.GetMessageSize()] = 0;
-				//Call some function
+				//Call user function
 				if(ws.OnMessage != nullptr) ws.OnMessage(socket);
 
 			}
@@ -202,7 +202,7 @@ int WebSocketServer::HandleClientEvent(Socket &socket)
 	}
 	catch(const exception& ex)
 	{
-		cout << "Could not read from socket" << endl;
+		cout << ex.what() << endl;
 	}
 
 }
@@ -240,7 +240,7 @@ map<string, string> WebSocketServer::ParseHTTPHeader(string header)
 	return m;
 }
 
-int WebSocketServer::RemoveFromPoll(Socket &socket)
+int WebSocketServer::RemoveFromPoll(Client &socket)
 {
 	auto pos = std::find(Sockets.begin(), Sockets.end(), socket);
 	if(pos != Sockets.end())

@@ -3,11 +3,11 @@
 //
 
 #include <string.h>
-#include "Socket.h"
+#include "Client.h"
 
 using namespace libwebsockets;
 
-Socket::Socket(SocketType Type, string ip, uint16 port,  int (*Handler)(Socket &))
+Client::Client(SocketType Type, string ip, uint16 port,  int (*Handler)(Client &))
 {
     struct sockaddr_in ServerAddress;
     int err;
@@ -45,7 +45,7 @@ Socket::Socket(SocketType Type, string ip, uint16 port,  int (*Handler)(Socket &
     FileDescriptor = socket(AF_INET, actualType, 0);
     if(FileDescriptor < 0)
     {
-        throw exception();
+        throw runtime_error("Could not open socket");
     }
 
     err = bind(FileDescriptor, (struct sockaddr*) &ServerAddress, sizeof(ServerAddress));
@@ -57,12 +57,12 @@ Socket::Socket(SocketType Type, string ip, uint16 port,  int (*Handler)(Socket &
 
 	if(err < 0)
 	{
-		throw exception();
+		throw runtime_error("Could not bind/listen to socket");
 	}
 
 }
 
-Socket::Socket(SocketType Type, int fd, int (*Handler)(Socket &))
+Client::Client(SocketType Type, int fd, int (*Handler)(Client &))
 {
 	this->Type = Type;
 	this->FileDescriptor = fd;
@@ -70,27 +70,27 @@ Socket::Socket(SocketType Type, int fd, int (*Handler)(Socket &))
     this->State = WebSocketState::OPENING;
 }
 
-size_t Socket::Read(uint8 *Buffer, size_t size)
+size_t Client::Read(uint8 *Buffer, size_t size)
 {
     ssize_t Read = recv(FileDescriptor, Buffer, size, 0);
 	if(Read < 0)
 	{
-		throw exception();
+		throw runtime_error("Could not read from client socket");
 	}
 
 	return (size_t)Read;
 }
 
-int Socket::Close()
+int Client::Close()
 {
 	return close(FileDescriptor);
 }
 
-int Socket::AddToMessage(uint8* Buffer, size_t Size, struct WebSocketHeader Header)
+int Client::AddToMessage(uint8* Buffer, size_t Size, struct WebSocketHeader Header)
 {
 	if (CurrentBufferPos + Size > MAX_MESSAGE_SIZE)
 	{
-		throw exception();
+		throw runtime_error("Message is too big");
 	}
 
 	if (!Header.IsMasked)
@@ -105,4 +105,47 @@ int Socket::AddToMessage(uint8* Buffer, size_t Size, struct WebSocketHeader Head
     CurrentBufferPos += Size;
 
     return 0;
+}
+
+void Client::SendPing()
+{
+    uint8 buffer[2];
+    buffer[0] = 0x89;
+    buffer[1] = 0x0;
+
+    send(FileDescriptor, buffer, 2, 0);
+}
+
+void Client::SendMessage(uint8 *Buffer, size_t Size, WebSocketOpcode MessageType)
+{
+    uint8 Message[Size + 10];
+    size_t MessageOffset = 2;
+    Message[0] = (uint8) 0x80 | static_cast<uint8>(MessageType);
+
+    if(Size < 126)
+    {
+        Message[1] = (uint8) Size;
+    }
+    else if(Size < 65535)
+    {
+        Message[1] = 126;
+        MessageOffset += 2;
+        *((uint16*) &Buffer[2]) = (uint16) Size;
+    }
+    else
+    {
+        MessageOffset += 8;
+        Message[1] = 127;
+        *((uint64*) &Buffer[2]) = Size;
+    }
+
+    memcpy(&Message[MessageOffset], Buffer, Size);
+
+    ssize_t sent = send(FileDescriptor, Message, Size + MessageOffset, 0);
+
+    if(sent != Size + MessageOffset)
+    {
+        throw runtime_error("Could not send message to client");
+    }
+
 }

@@ -3,7 +3,7 @@ project(libwebsockets)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
-set(LIB_FILES  Socket.cpp WebSocketServer.cpp WebSocketServer.h Base64.cpp sha1.cpp)
+set(LIB_FILES  Client.cpp WebSocketServer.cpp WebSocketServer.h Base64.cpp sha1.cpp)
 set(EXE_FILES main.cpp)
 
 add_library(websockets SHARED ${LIB_FILES})

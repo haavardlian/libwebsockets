@@ -1,52 +1,62 @@
 #include <iostream>
+#include <sys/errno.h>
+#include <string.h>
 #include "WebSocketServer.h"
+
 using namespace std;
 using namespace libwebsockets;
 
-void CloseHandler(Socket & socket)
+void CloseHandler(Client & socket)
 {
 	cout << "Closed socket " << socket.GetFileDescriptor() << endl;
 }
 
-void OpenHandler(Socket & socket)
+void OpenHandler(Client & socket)
 {
 
-	uint8 buffer[2];
-	buffer[0] = 0x89;
-	buffer[1] = 0x0;
 	cout << "Opened new connection, sending ping" << endl;
-	send(socket.GetFileDescriptor(), buffer, 2, 0);
+	socket.SendPing();
 }
 
-void PongHandler(Socket & socket)
+void PongHandler(Client & socket)
 {
 	cout << "Got pong from " << socket.GetFileDescriptor() << endl;
 }
 
-void OnMessage(Socket & socket)
+void OnMessage(Client & socket)
 {
 	cout << "Got message:" << endl << socket.GetMessage() << endl;
+
+	socket.SendMessage(socket.GetMessage(), socket.GetMessageSize(), WebSocketOpcode::TEXT);
+
 }
 
 int main() {
-
+	//Create instance and get reference to it
 	auto& ws = WebSocketServer::CreateInstance("127.0.0.1", 8154);
 
+	//Set up handlers for events
 	ws.OnClose = &CloseHandler;
 	ws.OnOpen = &OpenHandler;
 	ws.OnPong = &PongHandler;
 	ws.OnMessage = &OnMessage;
 
-
+	//Main program loop
 	while(true)
 	{
 		auto ret = ws.WaitForSockets(1000);
 
 		if(ret == 0)
-			//cout << "Timeout..." << endl;
+		{
+			//Time out from poll, do other housekeeping tasks
+		}
 		if(ret < 0)
+		{
+			//Poll returned an error
+			cout << "Error in poll: " << strerror(errno) << endl;
 			break;
+		}
 	}
 
-    return 0;
+    return 1;
 }
