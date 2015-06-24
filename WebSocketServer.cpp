@@ -4,6 +4,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <algorithm>
 #include "WebSocketServer.h"
 #include "Base64.h"
 #include "sha1.h"
@@ -12,13 +13,12 @@ using namespace libwebsockets;
 
 WebSocketServer WebSocketServer::instance;
 bool WebSocketServer::init = false;
-Socket *WebSocketServer::ServerSocket;
 
 int WebSocketServer::WaitForSockets(int Milliseconds)
 {
 	struct pollfd pfds[Sockets.size()];
 	int i = 0;
-	for(auto& socket : Sockets)
+	for(Socket& socket : Sockets)
 	{
 		pfds[i].fd = socket.GetFileDescriptor();
 		pfds[i].events = POLLIN;
@@ -81,7 +81,7 @@ int WebSocketServer::HandleConnectionEvent(Socket & socket)
 int WebSocketServer::HandleClientEvent(Socket &socket)
 {
 	auto& ws = WebSocketServer::Instance();
-	size_t BufferSize = 1500;
+	size_t BufferSize = TEMP_BUFFER_SIZE;
 	uint8 Buffer[BufferSize]; //Buffer for current packet
 
 	size_t ReadBytes;
@@ -100,19 +100,21 @@ int WebSocketServer::HandleClientEvent(Socket &socket)
 		header.Opcode = static_cast<WebSocketOpcode >(Buffer[0] & 0x0F);
 
 
-		if(Buffer[1] == 0x7E)
+		uint8 smallSize = Buffer[1] & 0x7F;
+
+		if(smallSize == 0x7E)
 		{
 			uint16* tempSize = (uint16*) &Buffer[2];
 			header.Length = ntohs(*tempSize);
 			MessageOffset += 2;
 		}
-		else if(Buffer[1] == 0x7F)
+		else if(smallSize == 0x7F)
 		{
 			uint64* tempSize = (uint64*) &Buffer[2];
 			header.Length = ntohll(*tempSize);
 			MessageOffset += 8;
 		}
-		else header.Length = Buffer[1] & 0x7F;
+		else header.Length = smallSize;
 
 		if(header.IsMasked)
 		{
@@ -121,7 +123,9 @@ int WebSocketServer::HandleClientEvent(Socket &socket)
 			MessageOffset += 4;
 		}
 
-		socket.AddToMessage(&Buffer[MessageOffset], ReadBytes - MessageOffset, header);
+		cout << "Read " << MessageOffset << " bytes of header and " << header.Length << " bytes of payload" << endl;
+
+		socket.AddToMessage(&Buffer[MessageOffset], header.Length, header);
 
 		if(header.IsFinal)
 		{
@@ -236,16 +240,12 @@ map<string, string> WebSocketServer::ParseHTTPHeader(string header)
 	return m;
 }
 
-int WebSocketServer::RemoveFromPoll(Socket &Socket)
+int WebSocketServer::RemoveFromPoll(Socket &socket)
 {
-	for(int i = 0; i < Sockets.size(); i++)
+	auto pos = std::find(Sockets.begin(), Sockets.end(), socket);
+	if(pos != Sockets.end())
 	{
-		if(&Sockets[i] == &Socket)
-		{
-			Sockets[i].Close();
-			Sockets.erase(Sockets.begin() + i);
-
-			return 0;
-		}
+		socket.Close();
+		Sockets.erase(pos);
 	}
 }

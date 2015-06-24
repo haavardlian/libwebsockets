@@ -30,7 +30,7 @@ void OnMessage(Socket & socket)
 
 int main() {
 
-	auto& ws = WebSocketServer::CreateInstance("0.0.0.0", 8154);
+	auto& ws = WebSocketServer::CreateInstance("127.0.0.1", 8154);
 
 	ws.OnClose = &CloseHandler;
 	ws.OnOpen = &OpenHandler;

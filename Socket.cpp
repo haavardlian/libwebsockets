@@ -21,6 +21,7 @@ Socket::Socket(SocketType Type, string ip, uint16 port,  int (*Handler)(Socket &
 
     this->Type = Type;
 	this->Handler = Handler;
+    this->State = WebSocketState::OPENING;
 
     int actualType = 0;
     switch (Type)
@@ -66,6 +67,7 @@ Socket::Socket(SocketType Type, int fd, int (*Handler)(Socket &))
 	this->Type = Type;
 	this->FileDescriptor = fd;
 	this->Handler = Handler;
+    this->State = WebSocketState::OPENING;
 }
 
 size_t Socket::Read(uint8 *Buffer, size_t size)

@@ -18,16 +18,14 @@ namespace libwebsockets
 	typedef void (*MessageHandler)(Socket & socket);
 
 	#define GID "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+	#define TEMP_BUFFER_SIZE 2048;
 	#define htonll(x) ((1==htonl(1)) ? (x) : ((uint64_t)htonl((x) & 0xFFFFFFFF) << 32) | htonl((x) >> 32))
 	#define ntohll(x) ((1==ntohl(1)) ? (x) : ((uint64_t)ntohl((x) & 0xFFFFFFFF) << 32) | ntohl((x) >> 32))
 
 	class WebSocketServer
 	{
 	public:
-		virtual ~WebSocketServer()
-		{
-			delete ServerSocket;
-		};
+		virtual ~WebSocketServer(){};
 		int AddToPoll(Socket Socket) { Sockets.push_back(Socket); };
 		int RemoveFromPoll(Socket & Socket);
 		vector<Socket>& GetSockets() { return Sockets; };
@@ -43,8 +41,7 @@ namespace libwebsockets
 			if(!init)
 			{
 				init = true;
-				ServerSocket = new Socket(SocketType::STREAM, ip, port, &HandleConnectionEvent);
-				instance.AddToPoll(*ServerSocket);
+				instance.AddToPoll(Socket(SocketType::STREAM, ip, port, &HandleConnectionEvent));
 			}
 			return instance;
 		};
@@ -61,7 +58,6 @@ namespace libwebsockets
 		vector<Socket>	Sockets;
 		static WebSocketServer instance;
 		static bool init;
-		static Socket* ServerSocket;
 		static int HandleConnectionEvent(Socket & socket);
 		static int HandleClientEvent(Socket & socket);
 		static map<string, string>		ParseHTTPHeader(string header);

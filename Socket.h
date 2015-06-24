@@ -35,6 +35,14 @@ namespace libwebsockets {
         PONG = 0xA
     };
 
+	enum class WebSocketState
+	{
+		OPENING,
+		OPEN,
+		CLOSING,
+		CLOSED
+	};
+
     struct WebSocketHeader {
         bool IsFinal;
         bool IsMasked;
@@ -54,29 +62,35 @@ namespace libwebsockets {
     class Socket
 	{
     public:
-                    Socket(SocketType Type, string ip, uint16 port, int	(*Handler)(Socket &));
-					Socket(SocketType Type, int fd, int	(*Handler)(Socket &));
-        virtual     ~Socket() {}
-        SocketType  GetType() { return Type; };
-        int         GetFileDescriptor() { return FileDescriptor; };
-        size_t      Read(uint8 *buffer, size_t size);
-		int			Close();
-		int 		HandleEvent() { return Handler(*this);};
-        int         AddToMessage(uint8* Buffer, size_t Size, struct WebSocketHeader Header);
-        void        ResetMessage() { CurrentBufferPos = 0; };
-        uint8*      GetMessage() { return Message; };
-        size_t      GetMessageSize() { return CurrentBufferPos; };
+                    	Socket(SocketType Type, string ip, uint16 port, int	(*Handler)(Socket &));
+						Socket(SocketType Type, int fd, int	(*Handler)(Socket &));
+        virtual     	~Socket() {}
+        SocketType  	GetType() { return Type; };
+        int         	GetFileDescriptor() { return FileDescriptor; };
+        size_t      	Read(uint8 *buffer, size_t size);
+		int				Close();
+		int 			HandleEvent() { return Handler(*this);};
+        int         	AddToMessage(uint8* Buffer, size_t Size, struct WebSocketHeader Header);
+        void        	ResetMessage() { CurrentBufferPos = 0; };
+        uint8*     		GetMessage() { return Message; };
+        size_t      	GetMessageSize() { return CurrentBufferPos; };
+		WebSocketState	GetState() { return State; };
+		void			SetState(WebSocketState state) { State = state; };
+
+        bool operator==(const Socket& s) const
+        {
+            return (&s == this);
+        }
+
     private:
         SocketType  Type;
         int         FileDescriptor;
 		int			(*Handler)(Socket &);
 		uint8 		Message[MAX_MESSAGE_SIZE];
 		int			CurrentBufferPos = 0;
+		WebSocketState State;
 
     };
 }
-
-
-
 
 #endif //PROJECT_SOCKET_H
