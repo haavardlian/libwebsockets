@@ -122,14 +122,13 @@ int WebSocketServer::HandleClientEvent(Client &socket)
 			MessageOffset += 4;
 		}
 
-		cout << "Read " << MessageOffset << " bytes of header and " << header.Length << " bytes of payload" << endl;
-
 		socket.AddToMessage(&Buffer[MessageOffset], header.Length, header);
 
 		if(header.IsFinal)
 		{
 			if(header.Opcode == WebSocketOpcode::CLOSE)
 			{
+				//TODO: Use client class to send close ack.
 				uint8 buffer[4];
 
 				bool payload = socket.GetMessageSize() > 0;

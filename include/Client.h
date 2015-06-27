@@ -20,7 +20,7 @@ namespace libwebsockets {
 	#define MAX_CONNECTION_QUEUE_SIZE 10
 	#define MAX_MESSAGE_SIZE 0xFFFF
 	#define MAX_BUFFER_SIZE 0x5DC
-    using namespace std;
+	using namespace std;
 
     typedef unsigned char uint8;
     typedef unsigned short uint16;
@@ -45,7 +45,7 @@ namespace libwebsockets {
 	};
 
     struct WebSocketHeader {
-        bool IsFinal;
+		bool IsFinal;
         bool IsMasked;
         WebSocketOpcode Opcode;
         uint64 Length;
@@ -79,6 +79,7 @@ namespace libwebsockets {
 		void			SetState(WebSocketState state) { State = state; };
         void            SendPing();
         void            SendMessage(uint8 *Buffer, size_t Size, WebSocketOpcode MessageType);
+		WebSocketOpcode GetMessageType() { return MessageType; };
 
         bool operator==(const Client & s) const
         {
@@ -92,7 +93,7 @@ namespace libwebsockets {
 		uint8 		Message[MAX_MESSAGE_SIZE];
 		int			CurrentBufferPos = 0;
 		WebSocketState State;
-
+		WebSocketOpcode MessageType;
     };
 }
 

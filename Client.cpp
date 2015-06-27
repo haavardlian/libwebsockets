@@ -93,6 +93,11 @@ int Client::AddToMessage(uint8* Buffer, size_t Size, struct WebSocketHeader Head
 		throw runtime_error("Message is too big");
 	}
 
+	if(Header.IsFinal)
+	{
+		MessageType = Header.Opcode;
+	}
+
 	if (!Header.IsMasked)
 		memcpy(&Message[CurrentBufferPos], Buffer, Size);
 	else
