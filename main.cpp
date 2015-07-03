@@ -1,7 +1,7 @@
 #include <iostream>
 #include <sys/errno.h>
 #include <string.h>
-#include "WebSocketServer.h"
+#include <WebSocketServer.h>
 
 using namespace std;
 using namespace libwebsockets;
@@ -25,9 +25,9 @@ void PongHandler(Client & socket)
 
 void OnMessage(Client & socket)
 {
-	cout << "Got message:" << endl << socket.GetMessage() << endl;
+	cout << "Got message:" << endl << socket.GetMessageString() << endl;
 
-	socket.SendMessage(socket.GetMessage(), socket.GetMessageSize(), WebSocketOpcode::TEXT);
+	socket.SendMessage(socket.GetMessage(), WebSocketOpcode::TEXT);
 
 }
 

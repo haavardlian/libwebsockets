@@ -14,12 +14,17 @@
 #include <functional>
 #include <iostream>
 #include <stdexcept>
+#include <vector>
+#include <iterator>
+#include <sstream>
 
 namespace libwebsockets {
 
 	#define MAX_CONNECTION_QUEUE_SIZE 10
-	#define MAX_MESSAGE_SIZE 0xFFFF
-	#define MAX_BUFFER_SIZE 0x5DC
+	#define MAX_MESSAGE_SIZE 0x8000
+    #define htonll(x) ((1==htonl(1)) ? (x) : ((uint64_t)htonl((x) & 0xFFFFFFFF) << 32) | htonl((x) >> 32))
+    #define ntohll(x) ((1==ntohl(1)) ? (x) : ((uint64_t)ntohl((x) & 0xFFFFFFFF) << 32) | ntohl((x) >> 32))
+
 	using namespace std;
 
     typedef unsigned char uint8;
@@ -68,17 +73,19 @@ namespace libwebsockets {
         virtual     	~Client() {}
         SocketType  	GetType() { return Type; };
         int         	GetFileDescriptor() { return FileDescriptor; };
-        size_t      	Read(uint8 *buffer, size_t size);
+        size_t      	ReadMessage(uint8 *Buffer, size_t size);
+        WebSocketHeader ReadHeader();
 		int				Close();
 		int 			HandleEvent() { return Handler(*this);};
         int         	AddToMessage(uint8* Buffer, size_t Size, struct WebSocketHeader Header);
-        void        	ResetMessage() { CurrentBufferPos = 0; };
-        uint8*     		GetMessage() { return Message; };
-        size_t      	GetMessageSize() { return CurrentBufferPos; };
+        void        	ResetMessage() { Message.clear(); };
+        vector<uint8>   GetMessage() { return Message; };
+        string          GetMessageString();
+        size_t      	GetMessageSize() { return Message.size(); };
 		WebSocketState	GetState() { return State; };
 		void			SetState(WebSocketState state) { State = state; };
         void            SendPing();
-        void            SendMessage(uint8 *Buffer, size_t Size, WebSocketOpcode MessageType);
+        void            SendMessage(vector<uint8> Buffer, WebSocketOpcode MessageType);
 		WebSocketOpcode GetMessageType() { return MessageType; };
 
         bool operator==(const Client & s) const
@@ -90,7 +97,7 @@ namespace libwebsockets {
         SocketType  Type;
         int         FileDescriptor;
 		int			(*Handler)(Client &);
-		uint8 		Message[MAX_MESSAGE_SIZE];
+		vector<uint8> Message;
 		int			CurrentBufferPos = 0;
 		WebSocketState State;
 		WebSocketOpcode MessageType;

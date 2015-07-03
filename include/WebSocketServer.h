@@ -19,8 +19,6 @@ namespace libwebsockets
 
 	#define GID "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 	#define TEMP_BUFFER_SIZE 2048;
-	#define htonll(x) ((1==htonl(1)) ? (x) : ((uint64_t)htonl((x) & 0xFFFFFFFF) << 32) | htonl((x) >> 32))
-	#define ntohll(x) ((1==ntohl(1)) ? (x) : ((uint64_t)ntohl((x) & 0xFFFFFFFF) << 32) | ntohl((x) >> 32))
 
 	class WebSocketServer
 	{

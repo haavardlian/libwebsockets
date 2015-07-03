@@ -5,9 +5,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <algorithm>
-#include "WebSocketServer.h"
-#include "Base64.h"
-#include "sha1.h"
+#include <WebSocketServer.h>
+#include <Base64.h>
+#include <sha1.h>
 
 using namespace libwebsockets;
 
@@ -48,7 +48,7 @@ int WebSocketServer::HandleConnectionEvent(Client & socket)
 	try
 	{
 		Client ClientSocket = Client(SocketType::STREAM, client, &HandleClientEvent);
-		ReadBytes = ClientSocket.Read(Buffer, BufferSize);
+		ReadBytes = recv(ClientSocket.GetFileDescriptor(), Buffer, BufferSize, 0);
 		Buffer[ReadBytes] = '\0';
 
 		map<string, string> header = ParseHTTPHeader(string((const char*)Buffer));
@@ -80,54 +80,20 @@ int WebSocketServer::HandleConnectionEvent(Client & socket)
 int WebSocketServer::HandleClientEvent(Client &socket)
 {
 	auto& ws = WebSocketServer::Instance();
-	size_t BufferSize = TEMP_BUFFER_SIZE;
-	uint8 Buffer[BufferSize]; //Buffer for current packet
 
-	size_t ReadBytes;
 	try
 	{
-		ReadBytes = socket.Read(Buffer, BufferSize);
-		Buffer[ReadBytes] = '\0';
-		size_t MessageOffset = 2;
-		struct WebSocketHeader header;
+		WebSocketHeader Header = socket.ReadHeader();
+		uint8 Buffer[Header.Length];
+		socket.ReadMessage(Buffer, Header.Length);
 
-		if(Buffer[0] & 0x80) header.IsFinal = true;
-		else header.IsFinal = false;
-		if(Buffer[1] & 0x80) header.IsMasked = true;
-		else header.IsMasked = false;
+		socket.AddToMessage(&Buffer[0], Header.Length, Header);
 
-		header.Opcode = static_cast<WebSocketOpcode >(Buffer[0] & 0x0F);
-
-
-		uint8 smallSize = Buffer[1] & 0x7F;
-
-		if(smallSize == 0x7E)
+		if(Header.IsFinal)
 		{
-			uint16* tempSize = (uint16*) &Buffer[2];
-			header.Length = ntohs(*tempSize);
-			MessageOffset += 2;
-		}
-		else if(smallSize == 0x7F)
-		{
-			uint64* tempSize = (uint64*) &Buffer[2];
-			header.Length = ntohll(*tempSize);
-			MessageOffset += 8;
-		}
-		else header.Length = smallSize;
-
-		if(header.IsMasked)
-		{
-			uint32* tempMask = (uint32*) &Buffer[MessageOffset];
-			header.MaskingKey = *tempMask;
-			MessageOffset += 4;
-		}
-
-		socket.AddToMessage(&Buffer[MessageOffset], header.Length, header);
-
-		if(header.IsFinal)
-		{
-			if(header.Opcode == WebSocketOpcode::CLOSE)
+			if(Header.Opcode == WebSocketOpcode::CLOSE)
 			{
+				socket.SetState(WebSocketState::CLOSING);
 				//TODO: Use client class to send close ack.
 				uint8 buffer[4];
 
@@ -148,7 +114,7 @@ int WebSocketServer::HandleClientEvent(Client &socket)
 				if(ws.OnClose != nullptr) ws.OnClose(socket);
 				ws.RemoveFromPoll(socket);
 			}
-			else if(header.Opcode == WebSocketOpcode::PING)
+			else if(Header.Opcode == WebSocketOpcode::PING)
 			{
 				uint8 buffer[0xFFFF];
 				buffer[0] = 0x89;
@@ -170,7 +136,7 @@ int WebSocketServer::HandleClientEvent(Client &socket)
 					*((uint64*) &buffer[2]) = (uint64) size;
 				}
 
-				memcpy(buffer + offset, socket.GetMessage(), socket.GetMessageSize());
+				memcpy(buffer + offset, &socket.GetMessage()[0], socket.GetMessageSize());
 
 				int sent = send(socket.GetFileDescriptor(), buffer, offset + socket.GetMessageSize(), 0x0);
 
@@ -181,14 +147,14 @@ int WebSocketServer::HandleClientEvent(Client &socket)
 
 				if(ws.OnPing != nullptr) ws.OnPing(socket);
 			}
-			else if(header.Opcode == WebSocketOpcode::PONG)
+			else if(Header.Opcode == WebSocketOpcode::PONG)
 			{
 				if(ws.OnPong != nullptr) ws.OnPong(socket);
 			}
 			else
 			{
 				//Terminate string if text message
-				if(header.Opcode == WebSocketOpcode::TEXT && socket.GetMessageSize() < MAX_MESSAGE_SIZE)
+				if(Header.Opcode == WebSocketOpcode::TEXT && socket.GetMessageSize() < MAX_MESSAGE_SIZE)
 					socket.GetMessage()[socket.GetMessageSize()] = 0;
 				//Call user function
 				if(ws.OnMessage != nullptr) ws.OnMessage(socket);
