@@ -7,7 +7,7 @@
 
 using namespace libwebsockets;
 
-Client::Client(SocketType Type, string ip, uint16 port,  int (*Handler)(Client &))
+Client::Client(SocketType Type, string ip, uint16 port)
 {
     struct sockaddr_in ServerAddress;
     int err;
@@ -20,7 +20,6 @@ Client::Client(SocketType Type, string ip, uint16 port,  int (*Handler)(Client &
 
 
     this->Type = Type;
-	this->Handler = Handler;
     this->State = WebSocketState::OPENING;
 
     int actualType = 0;
@@ -63,21 +62,26 @@ Client::Client(SocketType Type, string ip, uint16 port,  int (*Handler)(Client &
     this->State = WebSocketState::OPEN;
 }
 
-Client::Client(SocketType Type, int fd, int (*Handler)(Client &))
+Client::Client(SocketType Type, int fd)
 {
 	this->Type = Type;
 	this->FileDescriptor = fd;
-	this->Handler = Handler;
     this->State = WebSocketState::OPENING;
 }
 
-size_t Client::ReadMessage(uint8 *Buffer, size_t size)
+size_t Client::ReadMessage(struct WebSocketHeader Header)
 {
-    ssize_t Read = recv(FileDescriptor, Buffer, size, 0);
+    if(Header.Length == 0)
+        return 0;
+
+    uint8 Buffer[Header.Length];
+    ssize_t Read = recv(FileDescriptor, Buffer, Header.Length, 0);
 	if(Read < 0)
 	{
 		throw runtime_error("Could not read from client socket");
 	}
+
+    AddToMessage(&Buffer[0], Header);
 
 	return (size_t)Read;
 }
@@ -127,13 +131,8 @@ int Client::Close()
 	return close(FileDescriptor);
 }
 
-int Client::AddToMessage(uint8* Buffer, size_t Size, struct WebSocketHeader Header)
+int Client::AddToMessage(uint8* Buffer, struct WebSocketHeader Header)
 {
-	if (CurrentBufferPos + Size > MAX_MESSAGE_SIZE)
-	{
-		throw runtime_error("Message is too big");
-	}
-
 	if(Header.IsFinal)
 	{
 		MessageType = Header.Opcode;
@@ -141,16 +140,15 @@ int Client::AddToMessage(uint8* Buffer, size_t Size, struct WebSocketHeader Head
 
 	if (!Header.IsMasked)
     {
-        Message.insert(Message.begin(), &Buffer[0], &Buffer[0] + Size);
+        Message.insert(Message.end(), &Buffer[0], &Buffer[0] + Header.Length);
     }
 	else
 	{
-		for(int i = 0; i < Size; i++)
+		for(int i = 0; i < Header.Length; i++)
 		{
             Message.push_back(Buffer[i] ^ ((uint8*) &Header.MaskingKey)[i%4]);
 		}
 	}
-    CurrentBufferPos += Size;
 
     return 0;
 }

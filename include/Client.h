@@ -68,16 +68,16 @@ namespace libwebsockets {
     class Client
 	{
     public:
-                    	Client(SocketType Type, string ip, uint16 port, int	(*Handler)(Client &));
-						Client(SocketType Type, int fd, int	(*Handler)(Client &));
+                    	Client(SocketType Type, string ip, uint16 port);
+						Client(SocketType Type, int fd);
         virtual     	~Client() {}
         SocketType  	GetType() { return Type; };
         int         	GetFileDescriptor() { return FileDescriptor; };
-        size_t      	ReadMessage(uint8 *Buffer, size_t size);
+        size_t      	ReadMessage(struct WebSocketHeader Header);
         WebSocketHeader ReadHeader();
 		int				Close();
-		int 			HandleEvent() { return Handler(*this);};
-        int         	AddToMessage(uint8* Buffer, size_t Size, struct WebSocketHeader Header);
+		void 			HandleEvent() { Handler(*this);};
+        int         	AddToMessage(uint8* Buffer, struct WebSocketHeader Header);
         void        	ResetMessage() { Message.clear(); };
         vector<uint8>   GetMessage() { return Message; };
         string          GetMessageString();
@@ -87,19 +87,17 @@ namespace libwebsockets {
         void            SendPing();
         void            SendMessage(vector<uint8> Buffer, WebSocketOpcode MessageType);
 		WebSocketOpcode GetMessageType() { return MessageType; };
-
+        function<void(Client&)> Handler;
         bool operator==(const Client & s) const
         {
             return (&s == this);
         }
 
     private:
-        SocketType  Type;
-        int         FileDescriptor;
-		int			(*Handler)(Client &);
-		vector<uint8> Message;
-		int			CurrentBufferPos = 0;
-		WebSocketState State;
+        SocketType      Type;
+        int             FileDescriptor;
+		vector<uint8>   Message;
+		WebSocketState  State;
 		WebSocketOpcode MessageType;
     };
 }

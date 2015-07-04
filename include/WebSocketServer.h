@@ -9,13 +9,12 @@
 #include <poll.h>
 #include <vector>
 #include <map>
+#include <regex>
 
 namespace libwebsockets
 {
 	using namespace std;
-
-
-	typedef void (*MessageHandler)(Client & socket);
+	using namespace placeholders;
 
 	#define GID "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 	#define TEMP_BUFFER_SIZE 2048;
@@ -23,42 +22,26 @@ namespace libwebsockets
 	class WebSocketServer
 	{
 	public:
+		WebSocketServer(string IP, uint16 Port, string Endpoint);
 		virtual ~WebSocketServer(){};
-		int AddToPoll(Client Socket) { Sockets.push_back(Socket); };
+		void AddToPoll(Client Socket) { Sockets.push_back(Socket); };
 		int RemoveFromPoll(Client & Socket);
 		vector<Client>& GetSockets() { return Sockets; };
 		int WaitForSockets(int Milliseconds);
-		MessageHandler OnMessage = nullptr;
-		MessageHandler OnPing = nullptr;
-		MessageHandler OnPong = nullptr;
-		MessageHandler OnClose = nullptr;
-		MessageHandler OnOpen = nullptr;
-
-		static WebSocketServer& CreateInstance(string ip, uint16 port)
-		{
-			if(!init)
-			{
-				init = true;
-				instance.AddToPoll(Client(SocketType::STREAM, ip, port, &HandleConnectionEvent));
-			}
-			return instance;
-		};
-
-		static WebSocketServer& Instance()
-		{
-			if(!init) throw exception();
-			return instance;
-		};
+		function<void(Client&)> OnMessage = nullptr;
+		function<void(Client&)> OnPing = nullptr;
+		function<void(Client&)> OnPong = nullptr;
+		function<void(Client&)> OnClose = nullptr;
+		function<void(Client&)> OnOpen = nullptr;
 	private:
-		WebSocketServer() {};
-		WebSocketServer(WebSocketServer const&) {};
-		WebSocketServer& operator=(WebSocketServer const&){};
-		vector<Client>	Sockets;
-		static WebSocketServer instance;
-		static bool init;
-		static int HandleConnectionEvent(Client & socket);
-		static int HandleClientEvent(Client & socket);
-		static map<string, string>		ParseHTTPHeader(string header);
+		void 					HandleConnectionEvent(Client & socket);
+		void					HandleClientEvent(Client & socket);
+		map<string, string>		ParseHTTPHeader(string header);
+		vector<Client>			Sockets;
+		regex					Endpoint;
+
+
+
 	};
 }
 

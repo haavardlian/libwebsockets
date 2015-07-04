@@ -32,8 +32,7 @@ void OnMessage(Client & socket)
 }
 
 int main() {
-	//Create instance and get reference to it
-	auto& ws = WebSocketServer::CreateInstance("127.0.0.1", 8154);
+	WebSocketServer ws = WebSocketServer("127.0.0.1", 8154, "/chat");
 
 	//Set up handlers for events
 	ws.OnClose = &CloseHandler;

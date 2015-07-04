@@ -11,8 +11,15 @@
 
 using namespace libwebsockets;
 
-WebSocketServer WebSocketServer::instance;
-bool WebSocketServer::init = false;
+WebSocketServer::WebSocketServer(string IP, uint16 Port, string Endpoint)
+{
+	this->Endpoint = regex(Endpoint);
+
+	Client c(SocketType::STREAM, IP, Port);
+	c.Handler = bind(&WebSocketServer::HandleConnectionEvent, this, _1);
+	AddToPoll(c);
+
+}
 
 int WebSocketServer::WaitForSockets(int Milliseconds)
 {
@@ -36,9 +43,8 @@ int WebSocketServer::WaitForSockets(int Milliseconds)
 	return ret;
 }
 
-int WebSocketServer::HandleConnectionEvent(Client & socket)
+void WebSocketServer::HandleConnectionEvent(Client& socket)
 {
-	auto& ws = WebSocketServer::Instance();
 	struct sockaddr_in client_addr;
 	socklen_t client_length = sizeof(client_addr);
 	int client = accept(socket.GetFileDescriptor(), (struct sockaddr *)&client_addr, &client_length);
@@ -47,7 +53,8 @@ int WebSocketServer::HandleConnectionEvent(Client & socket)
 	size_t ReadBytes;
 	try
 	{
-		Client ClientSocket = Client(SocketType::STREAM, client, &HandleClientEvent);
+		Client ClientSocket = Client(SocketType::STREAM, client);
+		ClientSocket.Handler = bind(&WebSocketServer::HandleClientEvent, this, _1);
 		ReadBytes = recv(ClientSocket.GetFileDescriptor(), Buffer, BufferSize, 0);
 		Buffer[ReadBytes] = '\0';
 
@@ -58,16 +65,13 @@ int WebSocketServer::HandleConnectionEvent(Client & socket)
 		sha1::calc(appended.c_str(), appended.length(), hash);
 
 		string HashedKey = Base64Encode(hash, 20);
+		string handshake = "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: " + HashedKey + "\r\n\r\n";
 
-		char handshake[BufferSize];
+		send(ClientSocket.GetFileDescriptor(), handshake.c_str(), handshake.length(), 0);
 
-		sprintf(handshake, "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: %s\r\n\r\n", HashedKey.c_str());
+		AddToPoll(ClientSocket);
 
-		send(ClientSocket.GetFileDescriptor(), handshake, strlen(handshake), 0);
-
-		ws.AddToPoll(ClientSocket);
-
-		if(ws.OnOpen != nullptr) ws.OnOpen(ClientSocket);
+		if(OnOpen != nullptr) OnOpen(ClientSocket);
 
 	}
 	catch(const exception& ex)
@@ -77,17 +81,12 @@ int WebSocketServer::HandleConnectionEvent(Client & socket)
 
 }
 
-int WebSocketServer::HandleClientEvent(Client &socket)
+void WebSocketServer::HandleClientEvent(Client& socket)
 {
-	auto& ws = WebSocketServer::Instance();
-
 	try
 	{
 		WebSocketHeader Header = socket.ReadHeader();
-		uint8 Buffer[Header.Length];
-		socket.ReadMessage(Buffer, Header.Length);
-
-		socket.AddToMessage(&Buffer[0], Header.Length, Header);
+		socket.ReadMessage(Header);
 
 		if(Header.IsFinal)
 		{
@@ -111,8 +110,8 @@ int WebSocketServer::HandleClientEvent(Client &socket)
 
 				send(socket.GetFileDescriptor(), buffer, payload?4:2, 0);
 
-				if(ws.OnClose != nullptr) ws.OnClose(socket);
-				ws.RemoveFromPoll(socket);
+				if(OnClose != nullptr) OnClose(socket);
+				RemoveFromPoll(socket);
 			}
 			else if(Header.Opcode == WebSocketOpcode::PING)
 			{
@@ -145,11 +144,11 @@ int WebSocketServer::HandleClientEvent(Client &socket)
 					cout << "ERROR: Could not send ping" << endl;
 				}
 
-				if(ws.OnPing != nullptr) ws.OnPing(socket);
+				if(OnPing != nullptr) OnPing(socket);
 			}
 			else if(Header.Opcode == WebSocketOpcode::PONG)
 			{
-				if(ws.OnPong != nullptr) ws.OnPong(socket);
+				if(OnPong != nullptr) OnPong(socket);
 			}
 			else
 			{
@@ -157,13 +156,12 @@ int WebSocketServer::HandleClientEvent(Client &socket)
 				if(Header.Opcode == WebSocketOpcode::TEXT && socket.GetMessageSize() < MAX_MESSAGE_SIZE)
 					socket.GetMessage()[socket.GetMessageSize()] = 0;
 				//Call user function
-				if(ws.OnMessage != nullptr) ws.OnMessage(socket);
+				if(OnMessage != nullptr) OnMessage(socket);
 
 			}
 			socket.ResetMessage();
 		}
 
-		return 0;
 	}
 	catch(const exception& ex)
 	{
