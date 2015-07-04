@@ -152,9 +152,6 @@ void WebSocketServer::HandleClientEvent(Client& socket)
 			}
 			else
 			{
-				//Terminate string if text message
-				if(Header.Opcode == WebSocketOpcode::TEXT && socket.GetMessageSize() < MAX_MESSAGE_SIZE)
-					socket.GetMessage()[socket.GetMessageSize()] = 0;
 				//Call user function
 				if(OnMessage != nullptr) OnMessage(socket);
 

@@ -79,13 +79,13 @@ namespace libwebsockets {
 		void 			HandleEvent() { Handler(*this);};
         int         	AddToMessage(uint8* Buffer, struct WebSocketHeader Header);
         void        	ResetMessage() { Message.clear(); };
-        vector<uint8>   GetMessage() { return Message; };
+        vector<uint8>&  GetMessage() { return Message; };
         string          GetMessageString();
         size_t      	GetMessageSize() { return Message.size(); };
 		WebSocketState	GetState() { return State; };
 		void			SetState(WebSocketState state) { State = state; };
         void            SendPing();
-        void            SendMessage(vector<uint8> Buffer, WebSocketOpcode MessageType);
+        void            SendMessage(vector<uint8>& Buffer, WebSocketOpcode MessageType);
 		WebSocketOpcode GetMessageType() { return MessageType; };
         function<void(Client&)> Handler;
         bool operator==(const Client & s) const

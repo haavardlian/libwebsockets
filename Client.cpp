@@ -162,7 +162,7 @@ void Client::SendPing()
     send(FileDescriptor, buffer, 2, 0);
 }
 
-void Client::SendMessage(vector<uint8> Buffer, WebSocketOpcode MessageType)
+void Client::SendMessage(vector<uint8>& Buffer, WebSocketOpcode MessageType)
 {
     uint8 Message[Buffer.size() + 10];
     size_t MessageOffset = 2;
@@ -174,20 +174,22 @@ void Client::SendMessage(vector<uint8> Buffer, WebSocketOpcode MessageType)
     }
     else if(Buffer.size() < 65535)
     {
-        Message[1] = 126;
+        Message[1] = 0x7E;
         MessageOffset += 2;
-        *((uint16*) &Buffer[2]) = (uint16) Buffer.size();
+        *((uint16*) &Message[2]) = htons((uint16) Buffer.size());
     }
     else
     {
         MessageOffset += 8;
-        Message[1] = 127;
-        *((uint64*) &Buffer[2]) = Buffer.size();
+        Message[1] = 0x7F;
+        *((uint64*) &Message[2]) = htonll(Buffer.size());
     }
 
     memcpy(&Message[MessageOffset], &Buffer[0], Buffer.size());
 
-    ssize_t sent = send(FileDescriptor, Message, Buffer.size() + MessageOffset, 0);
+    size_t length = Buffer.size() + MessageOffset;
+
+    ssize_t sent = send(FileDescriptor, Message, length, 0);
 
     if(sent != Buffer.size() + MessageOffset)
     {
