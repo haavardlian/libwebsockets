@@ -76,7 +76,6 @@ size_t Client::ReadMessage(struct WebSocketHeader Header)
     if(Header.Length == 0)
         return 0;
 
-    uint8 Buffer[Header.Length];
     vector<uint8> buffer(Header.Length);
     ssize_t Read = read(FileDescriptor, &buffer[0], Header.Length);
 	if(Read < 0)
@@ -145,7 +144,7 @@ int Client::AddToMessage(vector<uint8>& Buffer, struct WebSocketHeader Header)
 	else
 	{
         //TODO: Optimize by iteration over uint32 as much as possible
-		for(int i = 0; i < Header.Length; i++)
+		for(uint64 i = 0; i < Header.Length; i++)
             Message.push_back(Buffer[i] ^ ((uint8*) &Header.MaskingKey)[i % 4]);
 	}
 
@@ -164,7 +163,7 @@ void Client::SendPing()
 void Client::SendMessage(vector<uint8>& Buffer, WebSocketOpcode MessageType)
 {
     //TODO: Possibly use a std::vector here?
-    uint8 Message[Buffer.size() + 10];
+    vector<uint8> Message(Buffer.size() + 10);
     size_t MessageOffset = 2;
     Message[0] = (uint8) 0x80 | static_cast<uint8>(MessageType);
 
@@ -189,9 +188,9 @@ void Client::SendMessage(vector<uint8>& Buffer, WebSocketOpcode MessageType)
 
     size_t length = Buffer.size() + MessageOffset;
 
-    ssize_t sent = send(FileDescriptor, Message, length, 0);
+    ssize_t sent = send(FileDescriptor, &Message[0], length, 0);
 
-    if(sent != Buffer.size() + MessageOffset)
+    if(sent != static_cast<ssize_t>(Buffer.size() + MessageOffset))
     {
         throw runtime_error("Could not send message to client");
     }

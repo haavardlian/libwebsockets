@@ -21,8 +21,8 @@ WebSocketServer::WebSocketServer(string IP, uint16 Port, string Endpoint)
 
 int WebSocketServer::WaitForSockets(int Milliseconds)
 {
-	struct pollfd pfds[Sockets.size()];
-	int i = 0;
+	vector<struct pollfd> pfds(Sockets.size());
+	vector<struct pollfd>::size_type i = 0;
 	for(Client & socket : Sockets)
 	{
 		pfds[i].fd = socket.GetFileDescriptor();
@@ -32,7 +32,7 @@ int WebSocketServer::WaitForSockets(int Milliseconds)
 
 	int ret = poll(&pfds[0], (int)Sockets.size(), Milliseconds);
 
-	for(int i = 0; i < Sockets.size(); i++)
+	for(i = 0; i < Sockets.size(); i++)
 	{
 		if((pfds[i].revents & POLLIN) != 0)
 			Sockets[i].HandleEvent();
@@ -59,20 +59,21 @@ void WebSocketServer::HandleConnectionEvent(Client& socket)
 	socklen_t client_length = sizeof(client_addr);
 	int client = accept(socket.GetFileDescriptor(), (struct sockaddr *)&client_addr, &client_length);
 	size_t BufferSize = 1500;
-	uint8 Buffer[BufferSize]; //Buffer for current packet
-	size_t ReadBytes;
+	//Buffer for current packet
+	vector<uint8> Buffer(BufferSize);
+	ssize_t ReadBytes;
 	try
 	{
 		Client ClientSocket = Client(SocketType::STREAM, client, bind(&WebSocketServer::HandleClientEvent, this, _1));
-		ReadBytes = recv(ClientSocket.GetFileDescriptor(), Buffer, BufferSize, 0);
+		ReadBytes = read(ClientSocket.GetFileDescriptor(), &Buffer[0], BufferSize);
 		Buffer[ReadBytes] = '\0';
-		map<string, string> header = ParseHTTPHeader(string((const char*)Buffer));
+		map<string, string> header = ParseHTTPHeader(string((const char*) &Buffer[0]));
 
 		//TODO: Regex match the endpoint with this->Endpoint
 
 		string appended = header["Sec-WebSocket-Key"] + GID;
 		uint8 hash[20];
-		sha1::calc(appended.c_str(), appended.length(), hash);
+		sha1::calc(appended.c_str(), static_cast<const int>(appended.length()), hash);
 
 		string HashedKey = Base64Encode(hash, 20);
 		string handshake = "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: " + HashedKey + "\r\n\r\n";
@@ -218,4 +219,6 @@ int WebSocketServer::RemoveFromPoll(Client &socket)
 		socket.Close();
 		Sockets.erase(pos);
 	}
+
+	return 0;
 }

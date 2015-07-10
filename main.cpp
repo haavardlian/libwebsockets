@@ -39,7 +39,7 @@ public:
 	virtual ~HandlerClass() {};
 	void HandleOpen(Client& client)
 	{
-		cout << "New socket opened!!" << endl;
+		cout << "New socket opened: " << client.GetFileDescriptor() << endl;
 	}
 };
 
