@@ -13,7 +13,6 @@ void CloseHandler(Client & socket)
 
 void OpenHandler(Client & socket)
 {
-
 	cout << "Opened new connection, sending ping" << endl;
 	socket.SendPing();
 }
@@ -25,37 +24,56 @@ void PongHandler(Client & socket)
 
 void OnMessage(Client & socket)
 {
-	cout << "Got message:" << endl << socket.GetMessageString() << endl;
+	if(socket.GetMessageType() == WebSocketOpcode::TEXT)
+		cout << "Got message:" << endl << socket.GetMessageString() << endl;
 
-	socket.SendMessage(socket.GetMessage(), WebSocketOpcode::TEXT);
+	//Echo the message back
+	socket.SendMessage(socket.GetMessage(), socket.GetMessageType());
 
 }
 
-int main() {
-	WebSocketServer ws = WebSocketServer("127.0.0.1", 8154, "/chat");
+class HandlerClass
+{
+public:
+	HandlerClass() {};
+	virtual ~HandlerClass() {};
+	void HandleOpen(Client& client)
+	{
+		cout << "New socket opened!!" << endl;
+	}
+};
 
-	//Set up handlers for events
+
+int main() {
+	WebSocketServer ws = WebSocketServer("127.0.0.1", 8154, "/");
+	HandlerClass handler;
+
+	//Set up static handler methods
 	ws.OnClose = &CloseHandler;
-	ws.OnOpen = &OpenHandler;
 	ws.OnPong = &PongHandler;
 	ws.OnMessage = &OnMessage;
+	//Set up a handler that is a member of a class
+	ws.OnOpen = bind(&HandlerClass::HandleOpen, &handler, placeholders::_1);
 
-	//Main program loop
-	while(true)
-	{
-		auto ret = ws.WaitForSockets(1000);
-
-		if(ret == 0)
-		{
-			//Time out from poll, do other housekeeping tasks
-		}
-		if(ret < 0)
-		{
-			//Poll returned an error
-			cout << "Error in poll: " << strerror(errno) << endl;
-			break;
-		}
-	}
+	//Handle main flow if additional tasks needs to be performed
+//	while(true)
+//	{
+//		auto ret = ws.WaitForSockets(5000);
+//
+//		if(ret == 0)
+//		{
+//			//Time out from poll, do other housekeeping tasks
+//			cout << "Timeout" << endl;
+//		}
+//		if(ret < 0)
+//		{
+//			//Poll returned an error
+//			cout << "Error in poll: " << strerror(errno) << endl;
+//			break;
+//		}
+//	}
+	//Just run the server
+	ws.Run();
 
     return 1;
 }

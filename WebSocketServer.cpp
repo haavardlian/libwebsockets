@@ -15,10 +15,8 @@ WebSocketServer::WebSocketServer(string IP, uint16 Port, string Endpoint)
 {
 	this->Endpoint = regex(Endpoint);
 
-	Client c(SocketType::STREAM, IP, Port);
-	c.Handler = bind(&WebSocketServer::HandleConnectionEvent, this, _1);
+	Client c(SocketType::STREAM, IP, Port, bind(&WebSocketServer::HandleConnectionEvent, this, _1));
 	AddToPoll(c);
-
 }
 
 int WebSocketServer::WaitForSockets(int Milliseconds)
@@ -43,6 +41,18 @@ int WebSocketServer::WaitForSockets(int Milliseconds)
 	return ret;
 }
 
+int WebSocketServer::Run()
+{
+	int nRet;
+	while(true)
+	{
+		nRet = WaitForSockets(DEFAULT_WAIT);
+		if(nRet < 0)
+			break;
+	}
+	return nRet;
+}
+
 void WebSocketServer::HandleConnectionEvent(Client& socket)
 {
 	struct sockaddr_in client_addr;
@@ -53,12 +63,12 @@ void WebSocketServer::HandleConnectionEvent(Client& socket)
 	size_t ReadBytes;
 	try
 	{
-		Client ClientSocket = Client(SocketType::STREAM, client);
-		ClientSocket.Handler = bind(&WebSocketServer::HandleClientEvent, this, _1);
+		Client ClientSocket = Client(SocketType::STREAM, client, bind(&WebSocketServer::HandleClientEvent, this, _1));
 		ReadBytes = recv(ClientSocket.GetFileDescriptor(), Buffer, BufferSize, 0);
 		Buffer[ReadBytes] = '\0';
-
 		map<string, string> header = ParseHTTPHeader(string((const char*)Buffer));
+
+		//TODO: Regex match the endpoint with this->Endpoint
 
 		string appended = header["Sec-WebSocket-Key"] + GID;
 		uint8 hash[20];

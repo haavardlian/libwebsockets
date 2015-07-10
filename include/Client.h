@@ -21,9 +21,11 @@
 namespace libwebsockets {
 
 	#define MAX_CONNECTION_QUEUE_SIZE 10
-	#define MAX_MESSAGE_SIZE 0x8000
     #define htonll(x) ((1==htonl(1)) ? (x) : ((uint64_t)htonl((x) & 0xFFFFFFFF) << 32) | htonl((x) >> 32))
     #define ntohll(x) ((1==ntohl(1)) ? (x) : ((uint64_t)ntohl((x) & 0xFFFFFFFF) << 32) | ntohl((x) >> 32))
+
+    #define WEBSOCKET_16BIT_SIZE 0x7E
+    #define WEBSOCKET_64BIT_SIZE 0x7F
 
 	using namespace std;
 
@@ -68,8 +70,8 @@ namespace libwebsockets {
     class Client
 	{
     public:
-                    	Client(SocketType Type, string ip, uint16 port);
-						Client(SocketType Type, int fd);
+                    	Client(SocketType Type, string ip, uint16 port, function<void(Client&)> callback);
+                        Client(SocketType Type, int fd, function<void(Client&)> callback);
         virtual     	~Client() {}
         SocketType  	GetType() { return Type; };
         int         	GetFileDescriptor() { return FileDescriptor; };
@@ -77,7 +79,7 @@ namespace libwebsockets {
         WebSocketHeader ReadHeader();
 		int				Close();
 		void 			HandleEvent() { Handler(*this);};
-        int         	AddToMessage(uint8* Buffer, struct WebSocketHeader Header);
+        int         	AddToMessage(vector<uint8>& Buffer, struct WebSocketHeader Header);
         void        	ResetMessage() { Message.clear(); };
         vector<uint8>&  GetMessage() { return Message; };
         string          GetMessageString();
@@ -87,7 +89,6 @@ namespace libwebsockets {
         void            SendPing();
         void            SendMessage(vector<uint8>& Buffer, WebSocketOpcode MessageType);
 		WebSocketOpcode GetMessageType() { return MessageType; };
-        function<void(Client&)> Handler;
         bool operator==(const Client & s) const
         {
             return (&s == this);
@@ -99,6 +100,7 @@ namespace libwebsockets {
 		vector<uint8>   Message;
 		WebSocketState  State;
 		WebSocketOpcode MessageType;
+        function<void(Client&)> Handler;
     };
 }
 

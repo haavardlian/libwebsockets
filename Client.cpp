@@ -4,10 +4,10 @@
 
 #include <string.h>
 #include <Client.h>
-
+#include <WebSocketServer.h>
 using namespace libwebsockets;
 
-Client::Client(SocketType Type, string ip, uint16 port)
+Client::Client(SocketType Type, string ip, uint16 port, function<void(Client&)> callback)
 {
     struct sockaddr_in ServerAddress;
     int err;
@@ -21,6 +21,7 @@ Client::Client(SocketType Type, string ip, uint16 port)
 
     this->Type = Type;
     this->State = WebSocketState::OPENING;
+    this->Handler = callback;
 
     int actualType = 0;
     switch (Type)
@@ -62,11 +63,12 @@ Client::Client(SocketType Type, string ip, uint16 port)
     this->State = WebSocketState::OPEN;
 }
 
-Client::Client(SocketType Type, int fd)
+Client::Client(SocketType Type, int fd, function<void(Client&)> callback)
 {
-	this->Type = Type;
-	this->FileDescriptor = fd;
-    this->State = WebSocketState::OPENING;
+    this->Type = Type;
+    this->FileDescriptor = fd;
+    this->State = WebSocketState::OPEN;
+    this->Handler = callback;
 }
 
 size_t Client::ReadMessage(struct WebSocketHeader Header)
@@ -75,52 +77,54 @@ size_t Client::ReadMessage(struct WebSocketHeader Header)
         return 0;
 
     uint8 Buffer[Header.Length];
-    ssize_t Read = recv(FileDescriptor, Buffer, Header.Length, 0);
+    vector<uint8> buffer(Header.Length);
+    ssize_t Read = read(FileDescriptor, &buffer[0], Header.Length);
 	if(Read < 0)
 	{
 		throw runtime_error("Could not read from client socket");
 	}
 
-    AddToMessage(&Buffer[0], Header);
+    AddToMessage(buffer, Header);
 
 	return (size_t)Read;
 }
 
 WebSocketHeader Client::ReadHeader()
 {
-    uint8 Buffer[2];
+    uint8 buffer[2];
     struct WebSocketHeader header;
 
-    read(FileDescriptor, Buffer, 2);
+    read(FileDescriptor, buffer, 2);
 
-    if(Buffer[0] & 0x80) header.IsFinal = true;
-    else header.IsFinal = false;
-    if(Buffer[1] & 0x80) header.IsMasked = true;
-    else header.IsMasked = false;
+    if(buffer[0] & 0x80)
+        header.IsFinal = true;
+    else
+        header.IsFinal = false;
 
-    header.Opcode = static_cast<WebSocketOpcode >(Buffer[0] & 0x0F);
+    if(buffer[1] & 0x80)
+        header.IsMasked = true;
+    else
+        header.IsMasked = false;
 
+    header.Opcode = static_cast<WebSocketOpcode >(buffer[0] & 0x0F);
 
-    uint8 smallSize = static_cast<uint8>(Buffer[1] & 0x7F);
-
-    if(smallSize == 0x7E)
+    uint8 size = static_cast<uint8>(buffer[1] & 0x7F);
+    if(size == WEBSOCKET_16BIT_SIZE)
     {
         uint16 tempSize;
-        read(FileDescriptor, &tempSize, sizeof(uint16));
+        read(FileDescriptor, &tempSize, 2);
         header.Length = ntohs(tempSize);
     }
-    else if(smallSize == 0x7F)
+    else if(size == WEBSOCKET_64BIT_SIZE)
     {
         uint64 tempSize;
-        read(FileDescriptor, &tempSize, sizeof(uint64));
+        read(FileDescriptor, &tempSize, 8);
         header.Length = ntohll(tempSize);
     }
-    else header.Length = smallSize;
+    else header.Length = size;
 
     if(header.IsMasked)
-    {
         read(FileDescriptor, &header.MaskingKey, sizeof(uint32));
-    }
 
     return header;
 }
@@ -131,23 +135,18 @@ int Client::Close()
 	return close(FileDescriptor);
 }
 
-int Client::AddToMessage(uint8* Buffer, struct WebSocketHeader Header)
+int Client::AddToMessage(vector<uint8>& Buffer, struct WebSocketHeader Header)
 {
 	if(Header.IsFinal)
-	{
 		MessageType = Header.Opcode;
-	}
 
 	if (!Header.IsMasked)
-    {
-        Message.insert(Message.end(), &Buffer[0], &Buffer[0] + Header.Length);
-    }
+        Message.insert(Message.end(), Buffer.begin(), Buffer.end());
 	else
 	{
+        //TODO: Optimize by iteration over uint32 as much as possible
 		for(int i = 0; i < Header.Length; i++)
-		{
-            Message.push_back(Buffer[i] ^ ((uint8*) &Header.MaskingKey)[i%4]);
-		}
+            Message.push_back(Buffer[i] ^ ((uint8*) &Header.MaskingKey)[i % 4]);
 	}
 
     return 0;
@@ -164,6 +163,7 @@ void Client::SendPing()
 
 void Client::SendMessage(vector<uint8>& Buffer, WebSocketOpcode MessageType)
 {
+    //TODO: Possibly use a std::vector here?
     uint8 Message[Buffer.size() + 10];
     size_t MessageOffset = 2;
     Message[0] = (uint8) 0x80 | static_cast<uint8>(MessageType);

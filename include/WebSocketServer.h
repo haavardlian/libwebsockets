@@ -5,7 +5,7 @@
 #ifndef LIBWEBSOCKETS_WEBSOCKETSERVER_H
 #define LIBWEBSOCKETS_WEBSOCKETSERVER_H
 
-#include "Client.h"
+#include <Client.h>
 #include <poll.h>
 #include <vector>
 #include <map>
@@ -17,7 +17,7 @@ namespace libwebsockets
 	using namespace placeholders;
 
 	#define GID "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
-	#define TEMP_BUFFER_SIZE 2048;
+	#define DEFAULT_WAIT 1000
 
 	class WebSocketServer
 	{
@@ -28,6 +28,7 @@ namespace libwebsockets
 		int RemoveFromPoll(Client & Socket);
 		vector<Client>& GetSockets() { return Sockets; };
 		int WaitForSockets(int Milliseconds);
+		int Run();
 		function<void(Client&)> OnMessage = nullptr;
 		function<void(Client&)> OnPing = nullptr;
 		function<void(Client&)> OnPong = nullptr;
@@ -39,8 +40,6 @@ namespace libwebsockets
 		map<string, string>		ParseHTTPHeader(string header);
 		vector<Client>			Sockets;
 		regex					Endpoint;
-
-
 
 	};
 }
