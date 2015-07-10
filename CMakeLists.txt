@@ -5,7 +5,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 include_directories("include")
 
-set(LIB_FILES  Client.cpp WebSocketServer.cpp Base64.cpp sha1.cpp)
+set(LIB_FILES  src/Client.cpp src/WebSocketServer.cpp src/Base64.cpp src/sha1.cpp)
 set(EXE_FILES main.cpp)
 
 add_library(websockets SHARED ${LIB_FILES})
