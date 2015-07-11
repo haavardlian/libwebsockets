@@ -5,6 +5,8 @@
 #include <string.h>
 #include <Client.h>
 #include <WebSocketServer.h>
+#include <stdio.h>
+
 using namespace libwebsockets;
 
 Client::Client(SocketType Type, string ip, uint16 port, function<void(Client&)> callback)
@@ -77,7 +79,7 @@ size_t Client::ReadMessage(struct WebSocketHeader Header)
         return 0;
 
     vector<uint8> buffer(Header.Length);
-    ssize_t Read = read(FileDescriptor, &buffer[0], Header.Length);
+    ssize_t Read = read(FileDescriptor, buffer.data(), Header.Length);
 	if(Read < 0)
 	{
 		throw runtime_error("Could not read from client socket");
@@ -162,35 +164,34 @@ void Client::SendPing()
 
 void Client::SendMessage(vector<uint8>& Buffer, WebSocketOpcode MessageType)
 {
-    //TODO: Possibly use a std::vector here?
-    vector<uint8> Message(Buffer.size() + 10);
-    size_t MessageOffset = 2;
-    Message[0] = (uint8) 0x80 | static_cast<uint8>(MessageType);
+    vector<uint8> Message;
+    Message.push_back((uint8) 0x80 | static_cast<uint8>(MessageType));
 
-    if(Buffer.size() < 126)
+    if(Buffer.size() < WEBSOCKET_16BIT_SIZE)
     {
-        Message[1] = (uint8) Buffer.size();
+        Message.push_back((uint8) Buffer.size());
     }
     else if(Buffer.size() < 65535)
     {
-        Message[1] = 0x7E;
-        MessageOffset += 2;
-        *((uint16*) &Message[2]) = htons((uint16) Buffer.size());
+        Message.push_back(WEBSOCKET_16BIT_SIZE);
+        auto tempSize = htons((uint16) Buffer.size());
+        auto data = reinterpret_cast<uint8*>(&tempSize);
+        Message.insert(Message.end(), data, data + sizeof(uint16));
     }
     else
     {
-        MessageOffset += 8;
-        Message[1] = 0x7F;
-        *((uint64*) &Message[2]) = htonll(Buffer.size());
+        Message.push_back(WEBSOCKET_64BIT_SIZE);
+        auto tempSize = htonll(Buffer.size());
+        auto data = reinterpret_cast<uint8*>(&tempSize);
+        Message.insert(Message.end(), data, data + sizeof(uint64));
     }
 
-    memcpy(&Message[MessageOffset], &Buffer[0], Buffer.size());
+    Message.insert(Message.end(), Buffer.begin(), Buffer.end());
 
-    size_t length = Buffer.size() + MessageOffset;
 
-    ssize_t sent = send(FileDescriptor, &Message[0], length, 0);
+    ssize_t sent = send(FileDescriptor, Message.data(), Message.size(), 0);
 
-    if(sent != static_cast<ssize_t>(Buffer.size() + MessageOffset))
+    if(sent != static_cast<ssize_t>(Message.size()))
     {
         throw runtime_error("Could not send message to client");
     }

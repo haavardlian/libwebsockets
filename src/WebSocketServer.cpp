@@ -65,7 +65,7 @@ void WebSocketServer::HandleConnectionEvent(Client& socket)
 	try
 	{
 		Client ClientSocket = Client(SocketType::STREAM, client, bind(&WebSocketServer::HandleClientEvent, this, _1));
-		ReadBytes = read(ClientSocket.GetFileDescriptor(), &Buffer[0], BufferSize);
+		ReadBytes = read(ClientSocket.GetFileDescriptor(), Buffer.data(), BufferSize);
 		Buffer[ReadBytes] = '\0';
 		map<string, string> header = ParseHTTPHeader(string((const char*) &Buffer[0]));
 
@@ -101,73 +101,34 @@ void WebSocketServer::HandleClientEvent(Client& socket)
 
 		if(Header.IsFinal)
 		{
-			if(Header.Opcode == WebSocketOpcode::CLOSE)
-			{
-				socket.SetState(WebSocketState::CLOSING);
-				//TODO: Use client class to send close ack.
-				uint8 buffer[4];
+            switch(Header.Opcode)
+            {
+                case WebSocketOpcode::CLOSE:
+                    socket.SetState(WebSocketState::CLOSING);
+                    vector<uint8> reason;
 
-				bool payload = socket.GetMessageSize() > 0;
+                    if(socket.GetMessageSize())
+                        reason.insert(reason.end(), socket.GetMessage().begin(), socket.GetMessage().begin() + 2);
 
-				buffer[0] = 0x88;
-				if(payload)
-				{
-					buffer[1] = 2;
-					buffer[2] = socket.GetMessage()[0];
-					buffer[3] = socket.GetMessage()[1];
-				}
-				else
-					buffer[1] = 0;
+                    socket.SendMessage(reason, WebSocketOpcode::CLOSE);
 
-				send(socket.GetFileDescriptor(), buffer, payload?4:2, 0);
+                    if(OnClose != nullptr) OnClose(socket);
+                    RemoveFromPoll(socket);
+                    break;
+                case WebSocketOpcode::PING:
+                    socket.SendMessage(socket.GetMessage(), WebSocketOpcode::PONG);
+                    if(OnPing != nullptr) OnPing(socket);
+                    break;
+                case WebSocketOpcode::PONG:
+                    if(OnPong != nullptr) OnPong(socket);
+                    break;
+                default:
+                    if(OnMessage != nullptr) OnMessage(socket);
+                    break;
+            }
 
-				if(OnClose != nullptr) OnClose(socket);
-				RemoveFromPoll(socket);
-			}
-			else if(Header.Opcode == WebSocketOpcode::PING)
-			{
-				uint8 buffer[0xFFFF];
-				buffer[0] = 0x89;
-
-				size_t size = socket.GetMessageSize();
-				int offset = 2;
-				if(size < 0x7E)
-					buffer[0] = size;
-				else if(size < 0x7F)
-				{
-					buffer[0] = 0x7E;
-					offset += 2;
-					*((uint16*) &buffer[2]) = (uint16) size;
-				}
-				else
-				{
-					buffer[0] = 0x7F;
-					offset += 8;
-					*((uint64*) &buffer[2]) = (uint64) size;
-				}
-
-				memcpy(buffer + offset, &socket.GetMessage()[0], socket.GetMessageSize());
-
-				int sent = send(socket.GetFileDescriptor(), buffer, offset + socket.GetMessageSize(), 0x0);
-
-				if(sent != sizeof(buffer))
-				{
-					cout << "ERROR: Could not send ping" << endl;
-				}
-
-				if(OnPing != nullptr) OnPing(socket);
-			}
-			else if(Header.Opcode == WebSocketOpcode::PONG)
-			{
-				if(OnPong != nullptr) OnPong(socket);
-			}
-			else
-			{
-				//Call user function
-				if(OnMessage != nullptr) OnMessage(socket);
-
-			}
-			socket.ResetMessage();
+            if(Header.Opcode != WebSocketOpcode::CLOSE)
+			    socket.ResetMessage();
 		}
 
 	}
