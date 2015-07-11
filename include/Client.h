@@ -88,6 +88,7 @@ namespace libwebsockets {
 		void			SetState(WebSocketState state) { State = state; };
         void            SendPing();
         void            SendMessage(vector<uint8>& Buffer, WebSocketOpcode MessageType);
+        void            SendString(string message);
 		WebSocketOpcode GetMessageType() { return MessageType; };
         bool operator==(const Client & s) const
         {

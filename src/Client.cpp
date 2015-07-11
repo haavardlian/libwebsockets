@@ -162,6 +162,12 @@ void Client::SendPing()
     send(FileDescriptor, buffer, 2, 0);
 }
 
+void Client::SendString(string message)
+{
+    std::vector<uint8> buffer(message.begin(), message.end());
+    SendMessage(buffer, WebSocketOpcode::TEXT);
+}
+
 void Client::SendMessage(vector<uint8>& Buffer, WebSocketOpcode MessageType)
 {
     vector<uint8> Message;

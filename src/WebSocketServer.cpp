@@ -104,6 +104,7 @@ void WebSocketServer::HandleClientEvent(Client& socket)
             switch(Header.Opcode)
             {
                 case WebSocketOpcode::CLOSE:
+                {
                     socket.SetState(WebSocketState::CLOSING);
                     vector<uint8> reason;
 
@@ -115,6 +116,7 @@ void WebSocketServer::HandleClientEvent(Client& socket)
                     if(OnClose != nullptr) OnClose(socket);
                     RemoveFromPoll(socket);
                     break;
+                }
                 case WebSocketOpcode::PING:
                     socket.SendMessage(socket.GetMessage(), WebSocketOpcode::PONG);
                     if(OnPing != nullptr) OnPing(socket);
