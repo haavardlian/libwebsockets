@@ -69,20 +69,36 @@ void WebSocketServer::HandleConnectionEvent(Client& socket)
 		Buffer[ReadBytes] = '\0';
 		map<string, string> header = ParseHTTPHeader(string((const char*) &Buffer[0]));
 
-		//TODO: Regex match the endpoint with this->Endpoint
 
-		string appended = header["Sec-WebSocket-Key"] + GID;
-		uint8 hash[20];
-		sha1::calc(appended.c_str(), static_cast<const int>(appended.length()), hash);
+        smatch results;
 
-		string HashedKey = Base64Encode(hash, 20);
-		string handshake = "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: " + HashedKey + "\r\n\r\n";
+        cout << header["Request"] << endl;
 
-		send(ClientSocket.GetFileDescriptor(), handshake.c_str(), handshake.length(), 0);
+        bool match = regex_match(header["Request"], results, Endpoint);
+        string handshake;
 
-		AddToPoll(ClientSocket);
+        if(match)
+        {
+            ClientSocket.SetRegexResult(results);
 
-		if(OnOpen != nullptr) OnOpen(ClientSocket);
+            string appended = header["Sec-WebSocket-Key"] + GID;
+            uint8 hash[20];
+            sha1::calc(appended.c_str(), static_cast<const int>(appended.length()), hash);
+
+            string HashedKey = Base64Encode(hash, 20);
+            handshake = "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: " + HashedKey + "\r\n\r\n";
+
+            send(ClientSocket.GetFileDescriptor(), handshake.c_str(), handshake.length(), 0);
+            AddToPoll(ClientSocket);
+
+            if(OnOpen != nullptr) OnOpen(ClientSocket);
+        }
+        else
+        {
+            handshake = "HTTP/1.1 404 Not Found\r\n\r\n";
+            send(ClientSocket.GetFileDescriptor(), handshake.c_str(), handshake.length(), 0);
+            ClientSocket.Close();
+        }
 
 	}
 	catch(const exception& ex)
@@ -164,7 +180,7 @@ map<string, string> WebSocketServer::ParseHTTPHeader(string header)
 		{
 			if(token.find("GET ") == 0)
 			{
-				m.insert(make_pair("Request", token));
+				m.insert(make_pair("Request", token.substr(5, token.length() - 14)));
 			}
 		}
 

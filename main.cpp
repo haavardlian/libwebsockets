@@ -48,14 +48,14 @@ int main() {
     WebSocketServer ws = WebSocketServer("127.0.0.1", 8154, "/");
     HandlerClass handler;
 
-    //Set up static handler methods
-    ws.OnClose = &CloseHandler;
-    ws.OnPong = &PongHandler;
-    ws.OnMessage = &OnMessage;
-    //Set up a handler that is a member of a class
-    ws.OnOpen = bind(&HandlerClass::HandleOpen, &handler, placeholders::_1);
+	//Set up static handler methods
+	ws.OnClose = &CloseHandler;
+	ws.OnPong = &PongHandler;
+	ws.OnMessage = &OnMessage;
+	//Set up a handler that is a member of a class
+	ws.OnOpen = bind(&HandlerClass::HandleOpen, &handler, placeholders::_1);
 
-    //Handle main flow if additional tasks needs to be performed
+	//Handle main flow if additional tasks needs to be performed
 //	while(true)
 //	{
 //		auto ret = ws.WaitForSockets(5000);
@@ -73,7 +73,7 @@ int main() {
 //		}
 //	}
 	//Just run the server
-    ws.Run();
+	ws.Run();
 
     return 1;
 }

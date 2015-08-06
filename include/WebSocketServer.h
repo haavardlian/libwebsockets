@@ -2,8 +2,8 @@
 // Created by Håvard on 13.06.2015.
 //
 
-#ifndef LIBWEBSOCKETS_WEBSOCKETSERVER_H
-#define LIBWEBSOCKETS_WEBSOCKETSERVER_H
+#ifndef WEBSOCKETSERVER_H
+#define WEBSOCKETSERVER_H
 
 #include <Client.h>
 #include <poll.h>
@@ -15,6 +15,8 @@ namespace libwebsockets
 {
 	using namespace std;
 	using namespace placeholders;
+
+	typedef function<void(Client&)> callback;
 
 	#define GID "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 	#define DEFAULT_WAIT 1000
@@ -29,11 +31,11 @@ namespace libwebsockets
 		vector<Client>& GetSockets() { return Sockets; };
 		int WaitForSockets(int Milliseconds);
 		int Run();
-		function<void(Client&)> OnMessage = nullptr;
-		function<void(Client&)> OnPing = nullptr;
-		function<void(Client&)> OnPong = nullptr;
-		function<void(Client&)> OnClose = nullptr;
-		function<void(Client&)> OnOpen = nullptr;
+		callback OnMessage = nullptr;
+		callback OnPing = nullptr;
+		callback OnPong = nullptr;
+		callback OnClose = nullptr;
+		callback OnOpen = nullptr;
 	private:
 		void 					HandleConnectionEvent(Client & socket);
 		void					HandleClientEvent(Client & socket);
