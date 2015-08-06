@@ -13,10 +13,9 @@
 
 namespace libwebsockets
 {
-	using namespace std;
-	using namespace placeholders;
+	using namespace std::placeholders;
 
-	typedef function<void(Client&)> callback;
+	typedef std::function<void(Client&)> callback;
 
 	#define GID "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 	#define DEFAULT_WAIT 1000
@@ -24,11 +23,11 @@ namespace libwebsockets
 	class WebSocketServer
 	{
 	public:
-		WebSocketServer(string IP, uint16 Port, string Endpoint);
+		WebSocketServer(std::string IP, uint16 Port, std::string Endpoint);
 		virtual ~WebSocketServer(){};
 		void AddToPoll(Client Socket) { Sockets.push_back(Socket); };
 		int RemoveFromPoll(Client & Socket);
-		vector<Client>& GetSockets() { return Sockets; };
+		std::vector<Client>& GetSockets() { return Sockets; };
 		int WaitForSockets(int Milliseconds);
 		int Run();
 		callback OnMessage = nullptr;
@@ -39,9 +38,9 @@ namespace libwebsockets
 	private:
 		void 					HandleConnectionEvent(Client & socket);
 		void					HandleClientEvent(Client & socket);
-		map<string, string>		ParseHTTPHeader(string header);
-		vector<Client>			Sockets;
-		regex					Endpoint;
+		std::map<std::string, std::string>		ParseHTTPHeader(std::string header);
+		std::vector<Client>			Sockets;
+		std::regex					Endpoint;
 
 	};
 }

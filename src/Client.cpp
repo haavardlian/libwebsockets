@@ -9,7 +9,7 @@
 
 using namespace libwebsockets;
 
-Client::Client(SocketType Type, string ip, uint16 port, function<void(Client&)> callback)
+Client::Client(SocketType Type, std::string ip, uint16 port, std::function<void(Client&)> callback)
 {
     struct sockaddr_in ServerAddress;
     int err;
@@ -47,7 +47,7 @@ Client::Client(SocketType Type, string ip, uint16 port, function<void(Client&)> 
     FileDescriptor = socket(AF_INET, actualType, 0);
     if(FileDescriptor < 0)
     {
-        throw runtime_error("Could not open socket");
+        throw std::runtime_error("Could not open socket");
     }
 
     err = bind(FileDescriptor, (struct sockaddr*) &ServerAddress, sizeof(ServerAddress));
@@ -59,13 +59,13 @@ Client::Client(SocketType Type, string ip, uint16 port, function<void(Client&)> 
 
 	if(err < 0)
 	{
-		throw runtime_error("Could not bind/listen to socket");
+		throw std::runtime_error("Could not bind/listen to socket");
 	}
 
     this->State = WebSocketState::OPEN;
 }
 
-Client::Client(SocketType Type, int fd, function<void(Client&)> callback)
+Client::Client(SocketType Type, int fd, std::function<void(Client&)> callback)
 {
     this->Type = Type;
     this->FileDescriptor = fd;
@@ -78,11 +78,11 @@ size_t Client::ReadMessage(struct WebSocketHeader Header)
     if(Header.Length == 0)
         return 0;
 
-    vector<uint8> buffer(Header.Length);
+    std::vector<uint8> buffer(Header.Length);
     ssize_t Read = read(FileDescriptor, buffer.data(), Header.Length);
 	if(Read < 0)
 	{
-		throw runtime_error("Could not read from client socket");
+		throw std::runtime_error("Could not read from client socket");
 	}
 
     AddToMessage(buffer, Header);
@@ -136,7 +136,7 @@ int Client::Close()
 	return close(FileDescriptor);
 }
 
-int Client::AddToMessage(vector<uint8>& Buffer, struct WebSocketHeader Header)
+int Client::AddToMessage(std::vector<uint8>& Buffer, struct WebSocketHeader Header)
 {
 	if(Header.IsFinal)
 		MessageType = Header.Opcode;
@@ -162,15 +162,15 @@ void Client::SendPing()
     send(FileDescriptor, buffer, 2, 0);
 }
 
-void Client::SendString(string message)
+void Client::SendString(std::string message)
 {
     std::vector<uint8> buffer(message.begin(), message.end());
     SendMessage(buffer, WebSocketOpcode::TEXT);
 }
 
-void Client::SendMessage(vector<uint8>& Buffer, WebSocketOpcode MessageType)
+void Client::SendMessage(std::vector<uint8>& Buffer, WebSocketOpcode MessageType)
 {
-    vector<uint8> Message;
+    std::vector<uint8> Message;
     Message.push_back((uint8) 0x80 | static_cast<uint8>(MessageType));
 
     if(Buffer.size() < WEBSOCKET_16BIT_SIZE)
@@ -199,15 +199,15 @@ void Client::SendMessage(vector<uint8>& Buffer, WebSocketOpcode MessageType)
 
     if(sent != static_cast<ssize_t>(Message.size()))
     {
-        throw runtime_error("Could not send message to client");
+        throw std::runtime_error("Could not send message to client");
     }
 
 }
 
-string Client::GetMessageString()
+std::string Client::GetMessageString()
 {
-    ostringstream oss;
-    copy(Message.begin(), Message.end(), ostream_iterator<uint8>(oss));
+    std::ostringstream oss;
+    copy(Message.begin(), Message.end(), std::ostream_iterator<uint8>(oss));
 
     return oss.str();
 }

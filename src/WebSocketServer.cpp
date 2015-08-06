@@ -11,9 +11,9 @@
 
 using namespace libwebsockets;
 
-WebSocketServer::WebSocketServer(string IP, uint16 Port, string Endpoint)
+WebSocketServer::WebSocketServer(std::string IP, uint16 Port, std::string Endpoint)
 {
-	this->Endpoint = regex(Endpoint);
+	this->Endpoint = std::regex(Endpoint);
 
 	Client c(SocketType::STREAM, IP, Port, bind(&WebSocketServer::HandleConnectionEvent, this, _1));
 	AddToPoll(c);
@@ -21,8 +21,8 @@ WebSocketServer::WebSocketServer(string IP, uint16 Port, string Endpoint)
 
 int WebSocketServer::WaitForSockets(int Milliseconds)
 {
-	vector<struct pollfd> pfds(Sockets.size());
-	vector<struct pollfd>::size_type i = 0;
+	std::vector<struct pollfd> pfds(Sockets.size());
+	std::vector<struct pollfd>::size_type i = 0;
 	for(Client & socket : Sockets)
 	{
 		pfds[i].fd = socket.GetFileDescriptor();
@@ -60,32 +60,32 @@ void WebSocketServer::HandleConnectionEvent(Client& socket)
 	int client = accept(socket.GetFileDescriptor(), (struct sockaddr *)&client_addr, &client_length);
 	size_t BufferSize = 1500;
 	//Buffer for current packet
-	vector<uint8> Buffer(BufferSize);
+	std::vector<uint8> Buffer(BufferSize);
 	ssize_t ReadBytes;
 	try
 	{
 		Client ClientSocket = Client(SocketType::STREAM, client, bind(&WebSocketServer::HandleClientEvent, this, _1));
 		ReadBytes = read(ClientSocket.GetFileDescriptor(), Buffer.data(), BufferSize);
 		Buffer[ReadBytes] = '\0';
-		map<string, string> header = ParseHTTPHeader(string((const char*) &Buffer[0]));
+		std::map<std::string, std::string> header = ParseHTTPHeader(std::string((const char*) &Buffer[0]));
 
 
-        smatch results;
+		std::smatch results;
 
-        cout << header["Request"] << endl;
+		std::cout << header["Request"] << std::endl;
 
         bool match = regex_match(header["Request"], results, Endpoint);
-        string handshake;
+		std::string handshake;
 
         if(match)
         {
             ClientSocket.SetRegexResult(results);
 
-            string appended = header["Sec-WebSocket-Key"] + GID;
+			std::string appended = header["Sec-WebSocket-Key"] + GID;
             uint8 hash[20];
             sha1::calc(appended.c_str(), static_cast<const int>(appended.length()), hash);
 
-            string HashedKey = Base64Encode(hash, 20);
+			std::string HashedKey = Base64Encode(hash, 20);
             handshake = "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: " + HashedKey + "\r\n\r\n";
 
             send(ClientSocket.GetFileDescriptor(), handshake.c_str(), handshake.length(), 0);
@@ -101,9 +101,9 @@ void WebSocketServer::HandleConnectionEvent(Client& socket)
         }
 
 	}
-	catch(const exception& ex)
+	catch(const std::exception& ex)
 	{
-		cout << ex.what() << endl;
+		std::cout << ex.what() << std::endl;
 	}
 
 }
@@ -122,7 +122,7 @@ void WebSocketServer::HandleClientEvent(Client& socket)
                 case WebSocketOpcode::CLOSE:
                 {
                     socket.SetState(WebSocketState::CLOSING);
-                    vector<uint8> reason;
+					std::vector<uint8> reason;
 
                     if(socket.GetMessageSize())
                         reason.insert(reason.end(), socket.GetMessage().begin(), socket.GetMessage().begin() + 2);
@@ -150,17 +150,17 @@ void WebSocketServer::HandleClientEvent(Client& socket)
 		}
 
 	}
-	catch(const exception& ex)
+	catch(const std::exception& ex)
 	{
-		cout << ex.what() << endl;
+		std::cout << ex.what() << std::endl;
 	}
 
 }
 
-map<string, string> WebSocketServer::ParseHTTPHeader(string header)
+std::map<std::string, std::string> WebSocketServer::ParseHTTPHeader(std::string header)
 {
 	std::string delimiter = "\r\n";
-	map<string, string> m;
+	std::map<std::string, std::string> m;
 	size_t pos = 0;
 	std::string token;
 	while ((pos = header.find(delimiter)) != std::string::npos) {
@@ -168,12 +168,12 @@ map<string, string> WebSocketServer::ParseHTTPHeader(string header)
 
 		size_t colon = token.find(':');
 
-		if(colon != string::npos)
+		if(colon != std::string::npos)
 		{
 			int skip = 1;
 			if(token.at(colon+skip) == ' ') skip++;
-			string key = token.substr(0, colon);
-			string value = token.substr(colon+skip);
+			std::string key = token.substr(0, colon);
+			std::string value = token.substr(colon+skip);
 			m.insert(make_pair(key, value));
 		}
 		else
