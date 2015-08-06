@@ -9,5 +9,9 @@ set(LIB_FILES  src/Client.cpp src/WebSocketServer.cpp src/Base64.cpp src/sha1.cp
 set(EXE_FILES main.cpp)
 
 add_library(websockets SHARED ${LIB_FILES})
+if(DEFINED ENV{VERSION})
+  set_target_properties(websockets PROPERTIES VERSION $ENV{VERSION} SOVERSION $ENV{SO_VERSION})
+endif()
+
 add_executable(websockettest ${EXE_FILES})
 target_link_libraries(websockettest websockets)
