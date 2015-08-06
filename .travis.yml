@@ -13,3 +13,7 @@ install:
   - cmake .. -DCMAKE_BUILD_TYPE=$BUILD_TYPE
   - make
   - cd ..
+  
+script:
+  - cd build
+  - cpack
