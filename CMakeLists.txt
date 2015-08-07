@@ -1,7 +1,10 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 2.8.4)
 project(libwebsockets)
 
 include(CPack)
+
+SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "WebSocket library written in C++")
+SET(CPACK_PACKAGE_VENDOR "Me, myself, and I")
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -W -Wall -pedantic")
 
@@ -14,8 +17,12 @@ add_library(websockets SHARED ${LIB_FILES})
 add_library(websockets-static STATIC ${LIB_FILES}) 
 set_target_properties(websockets-static PROPERTIES OUTPUT_NAME websockets)
 
-if(DEFINED ENV{VERSION})
-  set_target_properties(websockets PROPERTIES VERSION $ENV{VERSION} SOVERSION $ENV{SO_VERSION})
+if(DEFINED ENV{TEAMCITY})
+  set(VERSION "$ENV{MAJOR}.$ENV{MINOR}.$ENV{PATCH}")
+  SET(CPACK_PACKAGE_VERSION_MAJOR $ENV{MAJOR})
+  SET(CPACK_PACKAGE_VERSION_MINOR $ENV{MINOR})
+  SET(CPACK_PACKAGE_VERSION_PATCH $ENV{PATCH})
+  set_target_properties(websockets PROPERTIES VERSION ${VERSION} SOVERSION $ENV{MAJOR})
 endif()
 
 install(TARGETS websockets DESTINATION lib)
