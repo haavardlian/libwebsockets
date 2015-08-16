@@ -24,6 +24,9 @@ Client::Client(SocketType Type, std::string ip, uint16 port, std::function<void(
     this->Type = Type;
     this->State = WebSocketState::OPENING;
     this->Handler = callback;
+    this->IP = ip;
+    this->Port = port;
+    this->events = POLLIN;
 
     int actualType = 0;
     switch (Type)
@@ -44,17 +47,17 @@ Client::Client(SocketType Type, std::string ip, uint16 port, std::function<void(
             actualType = SOCK_DGRAM;
     }
 
-    FileDescriptor = socket(AF_INET, actualType, 0);
-    if(FileDescriptor < 0)
+    fd = socket(AF_INET, actualType, 0);
+    if(fd < 0)
     {
         throw std::runtime_error("Could not open socket");
     }
 
-    err = bind(FileDescriptor, (struct sockaddr*) &ServerAddress, sizeof(ServerAddress));
+    err = bind(fd, (struct sockaddr*) &ServerAddress, sizeof(ServerAddress));
 
 	if(Type == SocketType::STREAM || Type == SocketType::SEQUENTIAL)
 	{
-		err = listen(FileDescriptor, MAX_CONNECTION_QUEUE_SIZE);
+		err = listen(fd, MAX_CONNECTION_QUEUE_SIZE);
 	}
 
 	if(err < 0)
@@ -68,9 +71,10 @@ Client::Client(SocketType Type, std::string ip, uint16 port, std::function<void(
 Client::Client(SocketType Type, int fd, std::function<void(Client&)> callback)
 {
     this->Type = Type;
-    this->FileDescriptor = fd;
+    this->fd = fd;
     this->State = WebSocketState::OPEN;
     this->Handler = callback;
+    this->events = POLLIN;
 }
 
 size_t Client::ReadMessage(struct WebSocketHeader Header)
@@ -79,7 +83,7 @@ size_t Client::ReadMessage(struct WebSocketHeader Header)
         return 0;
 
     std::vector<uint8> buffer(Header.Length);
-    ssize_t Read = read(FileDescriptor, buffer.data(), Header.Length);
+    ssize_t Read = read(fd, buffer.data(), Header.Length);
 	if(Read < 0)
 	{
 		throw std::runtime_error("Could not read from client socket");
@@ -95,7 +99,7 @@ WebSocketHeader Client::ReadHeader()
     uint8 buffer[2];
     struct WebSocketHeader header;
 
-    read(FileDescriptor, buffer, 2);
+    read(fd, buffer, 2);
 
     if(buffer[0] & 0x80)
         header.IsFinal = true;
@@ -113,19 +117,19 @@ WebSocketHeader Client::ReadHeader()
     if(size == WEBSOCKET_16BIT_SIZE)
     {
         uint16 tempSize;
-        read(FileDescriptor, &tempSize, 2);
+        read(fd, &tempSize, 2);
         header.Length = ntohs(tempSize);
     }
     else if(size == WEBSOCKET_64BIT_SIZE)
     {
         uint64 tempSize;
-        read(FileDescriptor, &tempSize, 8);
+        read(fd, &tempSize, 8);
         header.Length = ntohll(tempSize);
     }
     else header.Length = size;
 
     if(header.IsMasked)
-        read(FileDescriptor, &header.MaskingKey, sizeof(uint32));
+        read(fd, &header.MaskingKey, sizeof(uint32));
 
     return header;
 }
@@ -133,7 +137,7 @@ WebSocketHeader Client::ReadHeader()
 int Client::Close()
 {
     State = WebSocketState::CLOSED;
-	return close(FileDescriptor);
+	return close(fd);
 }
 
 int Client::AddToMessage(std::vector<uint8>& Buffer, struct WebSocketHeader Header)
@@ -159,7 +163,7 @@ void Client::SendPing()
     buffer[0] = 0x89;
     buffer[1] = 0x0;
 
-    send(FileDescriptor, buffer, 2, 0);
+    send(fd, buffer, 2, 0);
 }
 
 void Client::SendString(std::string message)
@@ -195,7 +199,7 @@ void Client::SendMessage(std::vector<uint8>& Buffer, WebSocketOpcode MessageType
     Message.insert(Message.end(), Buffer.begin(), Buffer.end());
 
 
-    ssize_t sent = send(FileDescriptor, Message.data(), Message.size(), 0);
+    ssize_t sent = send(fd, Message.data(), Message.size(), 0);
 
     if(sent != static_cast<ssize_t>(Message.size()))
     {

@@ -18,6 +18,7 @@
 #include <regex>
 #include <iterator>
 #include <sstream>
+#include <sys/poll.h>
 
 namespace libwebsockets {
 
@@ -66,14 +67,14 @@ namespace libwebsockets {
         RANDOM
     };
 
-    class Client
+    class Client : public pollfd
 	{
     public:
                     	Client(SocketType Type, std::string ip, uint16 port, std::function<void(Client&)> callback);
                         Client(SocketType Type, int fd, std::function<void(Client&)> callback);
         virtual     	~Client() {}
         SocketType  	GetType() { return Type; };
-        int         	GetFileDescriptor() { return FileDescriptor; };
+        int         	GetFileDescriptor() { return fd; };
         size_t      	ReadMessage(struct WebSocketHeader Header);
         WebSocketHeader ReadHeader();
 		int				Close();
@@ -95,15 +96,18 @@ namespace libwebsockets {
         {
             return (&s == this);
         }
+        uint16          GetPort() { return Port;};
+        std::string     GetIP() { return IP; };
 
     private:
         SocketType      Type;
-        int             FileDescriptor;
         std::vector<uint8>   Message;
 		WebSocketState  State;
 		WebSocketOpcode MessageType;
         std::function<void(Client&)> Handler;
         std::smatch          RegexResult;
+        std::string     IP;
+        uint16          Port;
     };
 }
 

@@ -10,6 +10,7 @@
 #include <vector>
 #include <map>
 #include <regex>
+#include <algorithm>
 
 namespace libwebsockets
 {
@@ -27,6 +28,8 @@ namespace libwebsockets
 		virtual ~WebSocketServer(){};
 		void AddToPoll(Client Socket) { Sockets.push_back(Socket); };
 		int RemoveFromPoll(Client & Socket);
+		uint16 GetPort() { return Sockets[0].GetPort(); };
+		std::string GetIP() { return Sockets[0].GetIP(); };
 		std::vector<Client>& GetSockets() { return Sockets; };
 		int WaitForSockets(int Milliseconds);
 		int Run();

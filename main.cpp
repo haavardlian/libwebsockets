@@ -73,6 +73,7 @@ int main() {
 //		}
 //	}
 	//Just run the server
+	cout << "Started server on " << ws.GetIP() << ":" << ws.GetPort() << endl;
 	ws.Run();
 
     return 1;

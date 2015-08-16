@@ -21,23 +21,17 @@ WebSocketServer::WebSocketServer(std::string IP, uint16 Port, std::string Endpoi
 
 int WebSocketServer::WaitForSockets(int Milliseconds)
 {
-	std::vector<struct pollfd> pfds(Sockets.size());
-	std::vector<struct pollfd>::size_type i = 0;
-	for(Client & socket : Sockets)
+	//TODO: Dont create the pollfd array every time. Possibly use epoll?
+	std::vector<struct pollfd> pfds(Sockets.begin(), Sockets.end());
+	int ret = poll(&pfds[0], (int)pfds.size(), Milliseconds);
+	if(ret > 0)
 	{
-		pfds[i].fd = socket.GetFileDescriptor();
-		pfds[i].events = POLLIN;
-		i++;
+		for(uint i = 0; i < pfds.size(); i++)
+		{
+			if((pfds[i].revents & pfds[i].events) != 0)
+				Sockets[i].HandleEvent();
+		}
 	}
-
-	int ret = poll(&pfds[0], (int)Sockets.size(), Milliseconds);
-
-	for(i = 0; i < Sockets.size(); i++)
-	{
-		if((pfds[i].revents & POLLIN) != 0)
-			Sockets[i].HandleEvent();
-	}
-
 	return ret;
 }
 
@@ -74,7 +68,7 @@ void WebSocketServer::HandleConnectionEvent(Client& socket)
 
 		std::cout << header["Request"] << std::endl;
 
-        bool match = regex_match(header["Request"], results, Endpoint);
+        bool match = true;//regex_match(header["Request"], results, Endpoint);
 		std::string handshake;
 
         if(match)
@@ -124,6 +118,7 @@ void WebSocketServer::HandleClientEvent(Client& socket)
                     socket.SetState(WebSocketState::CLOSING);
 					std::vector<uint8> reason;
 
+					//If there is a payload in a close request the first two bytes should be the reason.
                     if(socket.GetMessageSize())
                         reason.insert(reason.end(), socket.GetMessage().begin(), socket.GetMessage().begin() + 2);
 

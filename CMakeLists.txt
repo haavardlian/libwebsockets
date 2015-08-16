@@ -4,7 +4,6 @@ project(libwebsockets)
 include(CPack)
 
 SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "WebSocket library written in C++")
-SET(CPACK_PACKAGE_VENDOR "Me, myself, and I")
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -W -Wall -pedantic")
 
@@ -28,7 +27,8 @@ endif()
 install(TARGETS websockets DESTINATION lib)
 install(TARGETS websockets-static DESTINATION lib)
 
-if(DEFINED ENV{BUILD_TEST})
-  add_executable(websockettest ${EXE_FILES})
-  target_link_libraries(websockettest websockets)
-endif()
+
+add_executable(websockettest ${EXE_FILES})
+target_link_libraries(websockettest websockets)
+
+
