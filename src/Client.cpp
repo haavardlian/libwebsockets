@@ -2,10 +2,8 @@
 // Created by Håvard on 13.06.2015.
 //
 
-#include <string.h>
 #include <Client.h>
 #include <WebSocketServer.h>
-#include <stdio.h>
 
 using namespace libwebsockets;
 
@@ -55,15 +53,15 @@ Client::Client(SocketType Type, std::string ip, uint16 port, std::function<void(
 
     err = bind(fd, (struct sockaddr*) &ServerAddress, sizeof(ServerAddress));
 
-	if(Type == SocketType::STREAM || Type == SocketType::SEQUENTIAL)
-	{
-		err = listen(fd, MAX_CONNECTION_QUEUE_SIZE);
-	}
+    if(Type == SocketType::STREAM || Type == SocketType::SEQUENTIAL)
+    {
+        err = listen(fd, MAX_CONNECTION_QUEUE_SIZE);
+    }
 
-	if(err < 0)
-	{
-		throw std::runtime_error("Could not bind/listen to socket");
-	}
+    if(err < 0)
+    {
+        throw std::runtime_error("Could not bind/listen to socket");
+    }
 
     this->State = WebSocketState::OPEN;
 }
@@ -84,14 +82,14 @@ size_t Client::ReadMessage(struct WebSocketHeader Header)
 
     std::vector<uint8> buffer(Header.Length);
     ssize_t Read = read(fd, buffer.data(), Header.Length);
-	if(Read < 0)
-	{
-		throw std::runtime_error("Could not read from client socket");
-	}
+    if(Read < 0)
+    {
+        throw std::runtime_error("Could not read from client socket");
+    }
 
     AddToMessage(buffer, Header);
 
-	return (size_t)Read;
+    return (size_t)Read;
 }
 
 WebSocketHeader Client::ReadHeader()
@@ -101,16 +99,8 @@ WebSocketHeader Client::ReadHeader()
 
     read(fd, buffer, 2);
 
-    if(buffer[0] & 0x80)
-        header.IsFinal = true;
-    else
-        header.IsFinal = false;
-
-    if(buffer[1] & 0x80)
-        header.IsMasked = true;
-    else
-        header.IsMasked = false;
-
+    header.IsFinal = buffer[0] & 0x80 != 0;
+    header.IsMasked = buffer[1] & 0x80 != 0;
     header.Opcode = static_cast<WebSocketOpcode >(buffer[0] & 0x0F);
 
     uint8 size = static_cast<uint8>(buffer[1] & 0x7F);
@@ -129,7 +119,7 @@ WebSocketHeader Client::ReadHeader()
     else header.Length = size;
 
     if(header.IsMasked)
-        read(fd, &header.MaskingKey, sizeof(uint32));
+        read(fd, &header.MaskingKey, sizeof(header.MaskingKey));
 
     return header;
 }
@@ -137,22 +127,22 @@ WebSocketHeader Client::ReadHeader()
 int Client::Close()
 {
     State = WebSocketState::CLOSED;
-	return close(fd);
+    return close(fd);
 }
 
 int Client::AddToMessage(std::vector<uint8>& Buffer, struct WebSocketHeader Header)
 {
-	if(Header.IsFinal)
-		MessageType = Header.Opcode;
+    if(Header.IsFinal)
+        MessageType = Header.Opcode;
 
-	if (!Header.IsMasked)
+    if (!Header.IsMasked)
         Message.insert(Message.end(), Buffer.begin(), Buffer.end());
-	else
-	{
+    else
+    {
         //TODO: Optimize by iteration over uint32 as much as possible
-		for(uint64 i = 0; i < Header.Length; i++)
+        for(uint64 i = 0; i < Header.Length; i++)
             Message.push_back(Buffer[i] ^ ((uint8*) &Header.MaskingKey)[i % 4]);
-	}
+    }
 
     return 0;
 }

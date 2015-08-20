@@ -1,6 +1,4 @@
 #include <iostream>
-#include <sys/errno.h>
-#include <string.h>
 #include <WebSocketServer.h>
 
 using namespace std;
@@ -55,10 +53,12 @@ int main() {
 	//Set up a handler that is a member of a class
 	ws.OnOpen = bind(&HandlerClass::HandleOpen, &handler, placeholders::_1);
 
+	cout << "Started server on " << ws.GetIP() << ":" << ws.GetPort() << endl;
+
 	//Handle main flow if additional tasks needs to be performed
 //	while(true)
 //	{
-//		auto ret = ws.WaitForSockets(5000);
+//		auto ret = ws.WaitForSockets(DEFAULT_WAIT);
 //
 //		if(ret == 0)
 //		{
@@ -73,8 +73,7 @@ int main() {
 //		}
 //	}
 	//Just run the server
-	cout << "Started server on " << ws.GetIP() << ":" << ws.GetPort() << endl;
-	ws.Run();
+	auto ret = ws.Run();
 
-    return 1;
+    return ret;
 }
