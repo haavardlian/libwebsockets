@@ -95,6 +95,7 @@ namespace libwebsockets
         std::smatch&        GetRegexResult() { return RegexResult; };
         uint16              GetPort() { return Port;};
         std::string         GetIP() { return IP; };
+        bool operator==(const Client& c) const { return (&c == this); };
 
     private:
         SocketType                      Type;

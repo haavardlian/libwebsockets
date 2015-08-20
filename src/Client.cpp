@@ -99,8 +99,8 @@ WebSocketHeader Client::ReadHeader()
 
     read(fd, buffer, 2);
 
-    header.IsFinal = buffer[0] & 0x80 != 0;
-    header.IsMasked = buffer[1] & 0x80 != 0;
+    header.IsFinal = (buffer[0] & 0x80) != 0;
+    header.IsMasked = (buffer[1] & 0x80) != 0;
     header.Opcode = static_cast<WebSocketOpcode >(buffer[0] & 0x0F);
 
     uint8 size = static_cast<uint8>(buffer[1] & 0x7F);
