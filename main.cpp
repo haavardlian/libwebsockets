@@ -4,6 +4,8 @@
 using namespace std;
 using namespace libwebsockets;
 
+WebSocketServer *server;
+
 void CloseHandler(Client & socket)
 {
 	cout << "Closed socket " << socket.GetFileDescriptor() << endl;
@@ -22,12 +24,7 @@ void PongHandler(Client & socket)
 
 void OnMessage(Client & socket)
 {
-	if(socket.GetMessageType() == WebSocketOpcode::TEXT)
-		cout << "Got message:" << endl << socket.GetMessageString() << endl;
-
-	//Echo the message back
-	socket.SendMessage(socket.GetMessage(), socket.GetMessageType());
-
+	server->SendToAll(socket, socket.GetMessage(), socket.GetMessageType());
 }
 
 class HandlerClass
@@ -43,17 +40,17 @@ public:
 
 
 int main() {
-    WebSocketServer ws = WebSocketServer("127.0.0.1", 8154, "/");
+	server = new WebSocketServer("127.0.0.1", 8154, "/");
     HandlerClass handler;
 
 	//Set up static handler methods
-	ws.OnClose = &CloseHandler;
-	ws.OnPong = &PongHandler;
-	ws.OnMessage = &OnMessage;
+	server->OnClose = &CloseHandler;
+	server->OnPong = &PongHandler;
+	server->OnMessage = &OnMessage;
 	//Set up a handler that is a member of a class
-	ws.OnOpen = bind(&HandlerClass::HandleOpen, &handler, placeholders::_1);
+	server->OnOpen = bind(&HandlerClass::HandleOpen, &handler, placeholders::_1);
 
-	cout << "Started server on " << ws.GetIP() << ":" << ws.GetPort() << endl;
+	cout << "Started server on " << server->GetIP() << ":" << server->GetPort() << endl;
 
 	//Handle main flow if additional tasks needs to be performed
 //	while(true)
@@ -73,7 +70,7 @@ int main() {
 //		}
 //	}
 	//Just run the server
-	auto ret = ws.Run();
+	auto ret = server->Run();
 
     return ret;
 }

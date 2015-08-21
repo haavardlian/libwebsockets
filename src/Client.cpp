@@ -26,26 +26,7 @@ Client::Client(SocketType Type, std::string ip, uint16 port, std::function<void(
     this->Port = port;
     this->events = POLLIN;
 
-    int actualType = 0;
-    switch (Type)
-    {
-        case SocketType::STREAM:
-            actualType = SOCK_STREAM;
-            break;
-        case SocketType::DATAGRAM:
-            actualType = SOCK_DGRAM;
-            break;
-        case SocketType::SEQUENTIAL:
-            actualType = SOCK_SEQPACKET;
-            break;
-        case SocketType::RANDOM:
-            actualType = SOCK_RDM;
-            break;
-        default:
-            actualType = SOCK_DGRAM;
-    }
-
-    fd = socket(AF_INET, actualType, 0);
+    fd = socket(AF_INET, static_cast<int>(Type), 0);
     if(fd < 0)
     {
         throw std::runtime_error("Could not open socket");
@@ -201,7 +182,7 @@ void Client::SendMessage(std::vector<uint8>& Buffer, WebSocketOpcode MessageType
 std::string Client::GetMessageString()
 {
     std::ostringstream oss;
-    copy(Message.begin(), Message.end(), std::ostream_iterator<uint8>(oss));
+    std::copy(Message.begin(), Message.end(), std::ostream_iterator<uint8>(oss));
 
     return oss.str();
 }

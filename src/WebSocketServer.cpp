@@ -62,7 +62,7 @@ void WebSocketServer::HandleConnectionEvent(Client& socket)
         Buffer[ReadBytes] = '\0';
         std::map<std::string, std::string> header = ParseHTTPHeader(std::string(Buffer.data()));
         std::smatch results;
-        bool match = regex_match(header["Request"], results, Endpoint);
+        bool match = true;//regex_match(header["Request"], results, Endpoint);
         std::string handshake;
 
         if(match)
@@ -189,4 +189,18 @@ int WebSocketServer::RemoveFromPoll(Client &socket)
     }
 
     return 0;
+}
+
+
+void WebSocketServer::SendToAll(Client& Sender, std::vector<uint8> Message, WebSocketOpcode MessageType, bool SendToSelf)
+{
+    for(auto& c : Sockets)
+    {
+        if(c.fd != Sockets[0].fd)
+        {
+            if(c.fd == Sender.fd && !SendToSelf)
+                continue;
+            c.SendMessage(Message, MessageType);
+        }
+    }
 }

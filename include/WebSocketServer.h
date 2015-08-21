@@ -32,6 +32,7 @@ namespace libwebsockets
         std::vector<Client>& GetSockets() { return Sockets; };
         int                  WaitForSockets(int Milliseconds);
         int                  Run();
+        void                 SendToAll(Client& Sender, std::vector<uint8> Message, WebSocketOpcode MessageType, bool SendToSelf = true);
         callback             OnMessage = nullptr;
         callback             OnPing = nullptr;
         callback             OnPong = nullptr;

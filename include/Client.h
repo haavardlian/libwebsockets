@@ -61,11 +61,11 @@ namespace libwebsockets
     };
 
     enum SocketType {
-        STREAM,
-        DATAGRAM,
-        SEQUENTIAL,
-        RAW,
-        RANDOM
+        STREAM = SOCK_STREAM,
+        DATAGRAM = SOCK_DGRAM,
+        SEQUENTIAL = SOCK_SEQPACKET,
+        RAW = SOCK_RAW,
+        RANDOM = SOCK_RDM
     };
 
     class Client : public pollfd
