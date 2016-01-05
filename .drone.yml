@@ -1,0 +1,7 @@
+build:
+    image: debian:latest
+    pull: true
+    commands:
+      - echo 2 | sudo update-alternatives --config gcc
+      - cmake .
+      - make
