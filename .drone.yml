@@ -1,5 +1,5 @@
 build:
-    image: ubuntu:latest
+    image: gcc:latest
     pull: true
     commands:
       - sudo apt-get install -y cmake make
