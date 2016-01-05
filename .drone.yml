@@ -2,6 +2,6 @@ build:
     image: gcc:latest
     pull: true
     commands:
-      - sudo apt-get install -y cmake make
+      - apt-get install -y cmake make
       - cmake .
       - make
