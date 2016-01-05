@@ -41,7 +41,7 @@ public:
 
 int main() {
 	server = new WebSocketServer("127.0.0.1", 8154, "/");
-    HandlerClass handler;
+	HandlerClass handler;
 
 	//Set up static handler methods
 	server->OnClose = &CloseHandler;
@@ -72,5 +72,5 @@ int main() {
 	//Just run the server
 	auto ret = server->Run();
 
-    return ret;
+	return ret;
 }
