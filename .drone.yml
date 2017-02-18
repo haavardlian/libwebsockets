@@ -5,14 +5,10 @@ pipeline:
         commands:
             - mkdir build
             - cd build
-            - export CXX=${COMPILER}
             - cmake .. -DCMAKE_BUILD_TYPE=${BUILD_TYPE} 
             - make
 
 matrix:
-    COMPILER:
-        - g++
-        - clang
     BUILD_TYPE:
         - Debug
         - Release
