@@ -5,7 +5,7 @@ pipeline:
             - mkdir build
             - cd build
             - export CXX=${COMPILER}
-            - cmake .. -DCMAKE_BUILD_TYPE=${BUILT_TYPE} 
+            - cmake .. -DCMAKE_BUILD_TYPE=${BUILD_TYPE} 
             - make
 
 matrix:
