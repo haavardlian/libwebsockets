@@ -1,6 +1,7 @@
 pipeline:
     build:
         image: haavardlian/cmake:latest
+        pull: true
         commands:
             - mkdir build
             - cd build
